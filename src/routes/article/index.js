@@ -9,6 +9,7 @@ import {
   getArticleStatistics,
   searchArticles,
   getRelatedArticles,
+  getRelatedArticlesByCategory,
   getPopularArticles,
   getFeaturedArticles,
   publishArticle,
@@ -57,6 +58,9 @@ router.get('/public/:id', async (req, res, next) => {
 
 // Lấy bài viết liên quan (public)
 router.get('/public/:id/related', getRelatedArticles);
+
+// Lấy bài viết liên quan theo danh mục (public)
+router.get('/public/related/:categoryId', getRelatedArticlesByCategory);
 
 // Protected routes (cần authentication)
 // Lấy danh sách tất cả bài viết (admin/faculty/student)

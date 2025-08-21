@@ -1,4 +1,5 @@
 // Instance methods for Category model
+import { toVietnamTime } from '../../utils/timezone.js';
 
 const addMethods = (schema) => {
   // Kích hoạt danh mục
@@ -41,7 +42,11 @@ const addMethods = (schema) => {
       articleCountDisplay: this.articleCountDisplay,
       url: this.url,
       isActive: this.isActive,
-      hasArticles: this.hasArticles
+      hasArticles: this.hasArticles,
+      createdAt: toVietnamTime(this.createdAt),
+      updatedAt: toVietnamTime(this.updatedAt),
+      sortOrder: this.sortOrder,
+      createdBy: this.createdBy
     };
   };
 

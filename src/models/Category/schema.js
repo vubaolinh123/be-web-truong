@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import { mongooseTimestampTransform } from '../../utils/timezone.js';
 
 const categorySchema = new mongoose.Schema({
   name: {
@@ -32,38 +33,11 @@ const categorySchema = new mongoose.Schema({
     },
     default: 'active'
   },
-  // Metadata cho SEO và hiển thị
-  metaTitle: {
-    type: String,
-    trim: true,
-    maxlength: [60, 'Meta title không được vượt quá 60 ký tự']
-  },
-  metaDescription: {
-    type: String,
-    trim: true,
-    maxlength: [160, 'Meta description không được vượt quá 160 ký tự']
-  },
   // Thứ tự hiển thị
   sortOrder: {
     type: Number,
     default: 0,
     min: [0, 'Thứ tự hiển thị không được nhỏ hơn 0']
-  },
-  // Màu sắc cho hiển thị (hex color)
-  color: {
-    type: String,
-    trim: true,
-    match: [
-      /^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/,
-      'Màu sắc phải là mã hex hợp lệ (ví dụ: #FF0000)'
-    ],
-    default: '#3B82F6' // Blue color
-  },
-  // Icon cho danh mục
-  icon: {
-    type: String,
-    trim: true,
-    maxlength: [50, 'Icon không được vượt quá 50 ký tự']
   },
   // Thống kê
   articleCount: {
@@ -82,20 +56,13 @@ const categorySchema = new mongoose.Schema({
   }
 }, {
   timestamps: true,
-  toJSON: { 
+  toJSON: {
     virtuals: true,
-    transform: function(doc, ret) {
-      // Loại bỏ các field không cần thiết khi trả về JSON
-      delete ret.__v;
-      return ret;
-    }
+    transform: mongooseTimestampTransform()
   },
-  toObject: { 
+  toObject: {
     virtuals: true,
-    transform: function(doc, ret) {
-      delete ret.__v;
-      return ret;
-    }
+    transform: mongooseTimestampTransform()
   }
 });
 

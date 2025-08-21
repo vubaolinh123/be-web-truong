@@ -5,6 +5,7 @@ import logger from './config/logger.js';
 import connectDatabase from './config/database.js';
 import corsMiddleware from './middleware/cors.js';
 import indexRoutes from './routes/index.js';
+import { timestampTransformMiddleware, getCurrentVietnamTime } from './utils/timezone.js';
 
 // Load environment variables
 dotenv.config();
@@ -22,6 +23,9 @@ app.use(corsMiddleware);
 // Body parsing middleware
 app.use(bodyParser.json({ limit: '10mb' }));
 app.use(bodyParser.urlencoded({ extended: true, limit: '10mb' }));
+
+// Timezone transformation middleware (temporarily disabled - using Mongoose transforms instead)
+// app.use('/api', timestampTransformMiddleware(['publishedAt', 'lastModified', 'lastLogin', 'passwordResetExpires']));
 
 // Streamlined request logging middleware
 app.use((req, res, next) => {
@@ -65,7 +69,7 @@ app.use('/api', indexRoutes);
 app.get('/', (req, res) => {
   res.status(200).json({
     message: 'University Backend API is running',
-    timestamp: new Date().toISOString(),
+    timestamp: getCurrentVietnamTime(),
     api: '/api'
   });
 });
@@ -81,7 +85,7 @@ app.use('*', (req, res) => {
   res.status(404).json({
     error: 'Route not found',
     message: `Cannot ${req.method} ${req.url}`,
-    timestamp: new Date().toISOString()
+    timestamp: getCurrentVietnamTime()
   });
 });
 
@@ -98,7 +102,7 @@ app.use((error, req, res, next) => {
   res.status(500).json({
     error: 'Internal Server Error',
     message: process.env.NODE_ENV === 'development' ? error.message : 'Something went wrong',
-    timestamp: new Date().toISOString()
+    timestamp: getCurrentVietnamTime()
   });
 });
 

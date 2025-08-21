@@ -27,7 +27,7 @@ export const getArticles = async (req, res) => {
     if (status && status !== 'all') {
       filter.status = status;
     }
-    if (category) {
+    if (category && category !== 'all') {
       filter.categories = category;
     }
     if (author) {
@@ -47,13 +47,16 @@ export const getArticles = async (req, res) => {
     const validSortBy = validateSortField(paginationParams.sortBy, ARTICLE_SORT_FIELDS);
 
     // Debug logging
-    logger.info('Article sorting parameters', {
+    logger.info('Article query parameters', {
       originalSortOrder: paginationParams.sortOrder,
       mongoSortOrder,
       originalSortBy: paginationParams.sortBy,
       validSortBy,
       page: paginationParams.page,
-      limit: paginationParams.limit
+      limit: paginationParams.limit,
+      filter,
+      originalCategory: category,
+      originalStatus: status
     });
 
     // Lấy bài viết với phân trang
@@ -242,16 +245,17 @@ export const getArticleBySlug = async (req, res) => {
   }
 };
 
-// Tạo bài viết mới
+// Tạo bài viết mới với category count update (không dùng transaction vì MongoDB standalone)
 export const createArticle = async (req, res) => {
   try {
+
     const {
       title,
       slug,
       content,
       excerpt,
       featuredImage,
-      categories,
+      categories, // Chỉ sử dụng categories array (có thể 1 hoặc nhiều categories)
       status = 'draft',
       metaTitle,
       metaDescription,
@@ -279,21 +283,27 @@ export const createArticle = async (req, res) => {
       });
     }
 
-    if (!categories || !Array.isArray(categories) || categories.length === 0) {
+    // Xử lý categories - chỉ sử dụng categories array
+    let finalCategories = [];
+
+    if (categories && Array.isArray(categories) && categories.length > 0) {
+      // Loại bỏ duplicates nếu có
+      finalCategories = [...new Set(categories)];
+    } else {
       return res.status(400).json({
         status: 'error',
-        message: 'Bài viết phải thuộc ít nhất một danh mục',
+        message: 'Bài viết phải thuộc ít nhất một danh mục (categories array)',
         data: null
       });
     }
 
     // Kiểm tra tất cả categories có tồn tại và active không
     const existingCategories = await Category.find({
-      _id: { $in: categories },
+      _id: { $in: finalCategories },
       status: 'active'
     });
 
-    if (existingCategories.length !== categories.length) {
+    if (existingCategories.length !== finalCategories.length) {
       return res.status(400).json({
         status: 'error',
         message: 'Một hoặc nhiều danh mục không tồn tại hoặc không hoạt động',
@@ -324,7 +334,7 @@ export const createArticle = async (req, res) => {
       content: content.trim(),
       excerpt: excerpt?.trim(),
       featuredImage,
-      categories,
+      categories: finalCategories,
       author: req.user.id,
       status,
       metaTitle: metaTitle?.trim(),
@@ -344,6 +354,12 @@ export const createArticle = async (req, res) => {
     }
 
     const article = await Article.create(articleData);
+
+    // Cập nhật articleCount cho tất cả categories liên quan
+    await Category.updateMany(
+      { _id: { $in: finalCategories } },
+      { $inc: { articleCount: 1 } }
+    );
 
     // Populate để trả về thông tin đầy đủ
     await article.populate('categories', 'name slug color icon');
@@ -409,9 +425,10 @@ export const createArticle = async (req, res) => {
   }
 };
 
-// Cập nhật bài viết
+// Cập nhật bài viết với category count update (không dùng transaction vì MongoDB standalone)
 export const updateArticle = async (req, res) => {
   try {
+
     const { id } = req.params;
     const {
       title,
@@ -419,7 +436,7 @@ export const updateArticle = async (req, res) => {
       content,
       excerpt,
       featuredImage,
-      categories,
+      categories, // Chỉ sử dụng categories array (có thể 1 hoặc nhiều categories)
       status,
       metaTitle,
       metaDescription,
@@ -479,23 +496,31 @@ export const updateArticle = async (req, res) => {
     if (allowComments !== undefined) updateData.allowComments = allowComments;
     if (sortOrder !== undefined) updateData.sortOrder = parseInt(sortOrder) || 0;
 
-    // Xử lý categories
+    // Xử lý categories với category count update - chỉ sử dụng categories array
+    let newCategories = null;
+    let oldCategories = article.categories.map(cat => cat.toString());
+
     if (categories !== undefined) {
+      // Validate categories array
       if (!Array.isArray(categories) || categories.length === 0) {
         return res.status(400).json({
           status: 'error',
-          message: 'Bài viết phải thuộc ít nhất một danh mục',
+          message: 'Bài viết phải thuộc ít nhất một danh mục (categories array)',
           data: null
         });
       }
+      // Loại bỏ duplicates nếu có
+      newCategories = [...new Set(categories)];
+    }
 
+    if (newCategories) {
       // Kiểm tra tất cả categories có tồn tại và active không
       const existingCategories = await Category.find({
-        _id: { $in: categories },
+        _id: { $in: newCategories },
         status: 'active'
       });
 
-      if (existingCategories.length !== categories.length) {
+      if (existingCategories.length !== newCategories.length) {
         return res.status(400).json({
           status: 'error',
           message: 'Một hoặc nhiều danh mục không tồn tại hoặc không hoạt động',
@@ -503,7 +528,28 @@ export const updateArticle = async (req, res) => {
         });
       }
 
-      updateData.categories = categories;
+      // Cập nhật category counts nếu categories thay đổi
+      const newCategoriesStr = newCategories.map(cat => cat.toString());
+      const categoriesToRemove = oldCategories.filter(cat => !newCategoriesStr.includes(cat));
+      const categoriesToAdd = newCategoriesStr.filter(cat => !oldCategories.includes(cat));
+
+      // Giảm count cho categories bị remove
+      if (categoriesToRemove.length > 0) {
+        await Category.updateMany(
+          { _id: { $in: categoriesToRemove } },
+          { $inc: { articleCount: -1 } }
+        );
+      }
+
+      // Tăng count cho categories được add
+      if (categoriesToAdd.length > 0) {
+        await Category.updateMany(
+          { _id: { $in: categoriesToAdd } },
+          { $inc: { articleCount: 1 } }
+        );
+      }
+
+      updateData.categories = newCategories;
     }
 
     // Xử lý slug
@@ -616,9 +662,10 @@ export const updateArticle = async (req, res) => {
   }
 };
 
-// Xóa bài viết
+// Xóa bài viết với category count update (không dùng transaction vì MongoDB standalone)
 export const deleteArticle = async (req, res) => {
   try {
+
     const { id } = req.params;
 
     // Tìm bài viết
@@ -655,8 +702,19 @@ export const deleteArticle = async (req, res) => {
       });
     }
 
+    // Lưu categories trước khi xóa để cập nhật count
+    const articleCategories = article.categories.map(cat => cat.toString());
+
     // Xóa bài viết
     await Article.findByIdAndDelete(id);
+
+    // Giảm articleCount cho tất cả categories liên quan
+    if (articleCategories.length > 0) {
+      await Category.updateMany(
+        { _id: { $in: articleCategories } },
+        { $inc: { articleCount: -1 } }
+      );
+    }
 
     logger.warn('Xóa bài viết thành công', {
       articleId: article._id,

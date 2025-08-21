@@ -6,14 +6,14 @@ const addVirtuals = (schema) => {
     return `/categories/${this.slug}`;
   });
 
-  // Display name virtual - ưu tiên metaTitle, fallback về name
+  // Display name virtual - sử dụng name
   schema.virtual('displayName').get(function() {
-    return this.metaTitle || this.name;
+    return this.name;
   });
 
-  // Display description virtual - ưu tiên metaDescription, fallback về description
+  // Display description virtual - sử dụng description
   schema.virtual('displayDescription').get(function() {
-    return this.metaDescription || this.description;
+    return this.description || '';
   });
 
   // Status display virtual - hiển thị trạng thái bằng tiếng Việt

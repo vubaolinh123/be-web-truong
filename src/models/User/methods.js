@@ -1,6 +1,7 @@
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
+import { toVietnamTime } from '../../utils/timezone.js';
 
 // Instance methods for User model
 
@@ -168,8 +169,9 @@ const addMethods = (schema) => {
       status: this.status,
       statusDisplay: this.statusDisplay,
       avatar: this.avatar,
-      createdAt: this.createdAt,
-      lastLogin: this.lastLogin
+      createdAt: toVietnamTime(this.createdAt),
+      updatedAt: toVietnamTime(this.updatedAt),
+      lastLogin: toVietnamTime(this.lastLogin)
     };
   };
 

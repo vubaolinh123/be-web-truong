@@ -112,6 +112,9 @@ const addStatics = (schema) => {
       select = null
     } = options;
 
+    // Validate sortOrder to prevent NaN errors
+    const validSortOrder = typeof sortOrder === 'number' && !isNaN(sortOrder) ? sortOrder : -1;
+
     const skip = (page - 1) * limit;
     
     let query = this.find(filter);
@@ -122,7 +125,7 @@ const addStatics = (schema) => {
     
     const [categories, total] = await Promise.all([
       query
-        .sort({ [sortBy]: sortOrder })
+        .sort({ [sortBy]: validSortOrder })
         .skip(skip)
         .limit(limit)
         .populate('createdBy', 'username firstName lastName')

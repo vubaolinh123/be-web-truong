@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import { mongooseTimestampTransform } from '../../utils/timezone.js';
 
 const userSchema = new mongoose.Schema({
   username: {
@@ -122,9 +123,13 @@ const userSchema = new mongoose.Schema({
   }
 }, {
   timestamps: true,
-  toJSON: { 
+  toJSON: {
     virtuals: true,
     transform: function(doc, ret) {
+      // Apply timezone transformation first
+      ret = mongooseTimestampTransform(['lastLogin', 'passwordResetExpires'])(doc, ret);
+
+      // Remove sensitive fields
       delete ret.password;
       delete ret.emailVerificationToken;
       delete ret.passwordResetToken;

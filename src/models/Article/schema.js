@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import { mongooseTimestampTransform } from '../../utils/timezone.js';
 
 const articleSchema = new mongoose.Schema({
   title: {
@@ -30,20 +31,9 @@ const articleSchema = new mongoose.Schema({
     maxlength: [500, 'Tóm tắt không được vượt quá 500 ký tự']
   },
   featuredImage: {
-    url: {
-      type: String,
-      trim: true
-    },
-    alt: {
-      type: String,
-      trim: true,
-      maxlength: [200, 'Alt text không được vượt quá 200 ký tự']
-    },
-    caption: {
-      type: String,
-      trim: true,
-      maxlength: [300, 'Caption không được vượt quá 300 ký tự']
-    }
+    type: String,
+    trim: true,
+    default: ''
   },
   // Many-to-many relationship với Categories
   categories: [{
@@ -137,20 +127,13 @@ const articleSchema = new mongoose.Schema({
   }
 }, {
   timestamps: true,
-  toJSON: { 
+  toJSON: {
     virtuals: true,
-    transform: function(doc, ret) {
-      // Loại bỏ các field không cần thiết khi trả về JSON
-      delete ret.__v;
-      return ret;
-    }
+    transform: mongooseTimestampTransform(['publishedAt', 'lastModified'])
   },
-  toObject: { 
+  toObject: {
     virtuals: true,
-    transform: function(doc, ret) {
-      delete ret.__v;
-      return ret;
-    }
+    transform: mongooseTimestampTransform(['publishedAt', 'lastModified'])
   }
 });
 

@@ -1,4 +1,5 @@
 // Instance methods for Article model
+import { toVietnamTime } from '../../utils/timezone.js';
 
 const addMethods = (schema) => {
   // Xuất bản bài viết
@@ -156,7 +157,12 @@ const addMethods = (schema) => {
       isPublished: this.isPublished,
       isDraft: this.isDraft,
       isArchived: this.isArchived,
-      hasFeaturedImage: this.hasFeaturedImage
+      hasFeaturedImage: this.hasFeaturedImage,
+      createdAt: toVietnamTime(this.createdAt),
+      updatedAt: toVietnamTime(this.updatedAt),
+      publishedAt: toVietnamTime(this.publishedAt),
+      author: this.author,
+      categories: this.categories
     };
   };
 

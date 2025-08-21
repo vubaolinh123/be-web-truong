@@ -24,17 +24,31 @@ export const getCategories = async (req, res) => {
       filter.$text = { $search: search };
     }
 
+    // Validate và convert sort parameters
+    const validSortFields = ['name', 'createdAt', 'updatedAt', 'sortOrder', 'articleCount'];
+    const finalSortBy = validSortFields.includes(sortBy) ? sortBy : 'createdAt';
+
+    // Convert sortOrder string to MongoDB sort value
+    let finalSortOrder;
+    if (typeof sortOrder === 'string') {
+      finalSortOrder = sortOrder.toLowerCase() === 'desc' ? -1 : 1;
+    } else {
+      finalSortOrder = parseInt(sortOrder) || -1;
+    }
+
     // Lấy danh mục với phân trang
     const result = await Category.findWithPagination(filter, {
       page: parseInt(page),
       limit: parseInt(limit),
-      sortBy,
-      sortOrder: parseInt(sortOrder)
+      sortBy: finalSortBy,
+      sortOrder: finalSortOrder
     });
 
     logger.info('Lấy danh sách danh mục thành công', {
       totalCategories: result.pagination.totalCategories,
       currentPage: result.pagination.currentPage,
+      sortBy: finalSortBy,
+      sortOrder: finalSortOrder,
       filter,
       userId: req.user?.id,
       ip: req.ip

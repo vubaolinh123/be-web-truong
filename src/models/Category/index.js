@@ -29,15 +29,11 @@ categorySchema.index({ status: 1, name: 1 });
 // Text index for search functionality
 categorySchema.index({
   name: 'text',
-  description: 'text',
-  metaTitle: 'text',
-  metaDescription: 'text'
+  description: 'text'
 }, {
   weights: {
     name: 10,
-    metaTitle: 8,
-    description: 5,
-    metaDescription: 3
+    description: 5
   },
   name: 'category_text_search'
 });

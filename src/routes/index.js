@@ -2,17 +2,25 @@ import express from 'express';
 import userRoutes from './user/index.js';
 import categoryRoutes from './category/index.js';
 import articleRoutes from './article/index.js';
+import { getCurrentVietnamTime, getVietnamTimezoneInfo } from '../utils/timezone.js';
 
 const router = express.Router();
 
 // Health check endpoint
 router.get('/health', (req, res) => {
+  const timezoneInfo = getVietnamTimezoneInfo();
+
   const healthData = {
     status: 'OK',
-    timestamp: new Date().toISOString(),
+    timestamp: getCurrentVietnamTime(),
     uptime: process.uptime(),
     environment: process.env.NODE_ENV || 'development',
-    database: 'university'
+    database: 'university',
+    timezone: {
+      name: timezoneInfo.timezone,
+      offset: timezoneInfo.offset,
+      currentTime: timezoneInfo.currentTime
+    }
   };
 
   res.status(200).json(healthData);
@@ -45,7 +53,7 @@ router.get('/info', (req, res) => {
         search: '/api/articles/admin/search'
       }
     },
-    timestamp: new Date().toISOString()
+    timestamp: getCurrentVietnamTime()
   };
 
 
@@ -57,7 +65,7 @@ router.get('/info', (req, res) => {
 router.get('/', (req, res) => {
   res.status(200).json({
     message: 'Welcome to University Backend API',
-    timestamp: new Date().toISOString(),
+    timestamp: getCurrentVietnamTime(),
     documentation: '/api/info'
   });
 });
