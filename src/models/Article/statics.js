@@ -4,35 +4,35 @@ const addStatics = (schema) => {
   // Tìm bài viết theo slug
   schema.statics.findBySlug = function(slug) {
     return this.findOne({ slug: slug.toLowerCase() })
-      .populate('categories', 'name slug color icon')
+      .populate('categories', 'name slug')
       .populate('author', 'username firstName lastName avatar');
   };
 
   // Tìm các bài viết đã xuất bản
   schema.statics.findPublished = function(filter = {}) {
     return this.find({ ...filter, status: 'published' })
-      .populate('categories', 'name slug color icon')
+      .populate('categories', 'name slug')
       .populate('author', 'username firstName lastName avatar');
   };
 
   // Tìm các bài viết theo trạng thái
   schema.statics.findByStatus = function(status, filter = {}) {
     return this.find({ ...filter, status })
-      .populate('categories', 'name slug color icon')
+      .populate('categories', 'name slug')
       .populate('author', 'username firstName lastName avatar');
   };
 
   // Tìm các bài viết theo danh mục
   schema.statics.findByCategory = function(categoryId, filter = {}) {
     return this.find({ ...filter, categories: categoryId })
-      .populate('categories', 'name slug color icon')
+      .populate('categories', 'name slug')
       .populate('author', 'username firstName lastName avatar');
   };
 
   // Tìm các bài viết theo tác giả
   schema.statics.findByAuthor = function(authorId, filter = {}) {
     return this.find({ ...filter, author: authorId })
-      .populate('categories', 'name slug color icon')
+      .populate('categories', 'name slug')
       .populate('author', 'username firstName lastName avatar');
   };
 
@@ -170,7 +170,7 @@ const addStatics = (schema) => {
     
     if (populate) {
       query = query
-        .populate('categories', 'name slug color icon')
+        .populate('categories', 'name slug')
         .populate('author', 'username firstName lastName avatar');
     }
     
@@ -233,7 +233,7 @@ const addStatics = (schema) => {
     return this.find(filter)
       .sort({ [sortBy]: sortOrder })
       .limit(limit)
-      .populate('categories', 'name slug color icon')
+      .populate('categories', 'name slug')
       .populate('author', 'username firstName lastName avatar')
       .select('title slug excerpt featuredImage viewCount likeCount createdAt publishedAt');
   };
@@ -255,7 +255,7 @@ const addStatics = (schema) => {
     return await this.find(relatedFilter)
       .sort({ viewCount: -1, createdAt: -1 })
       .limit(limit)
-      .populate('categories', 'name slug color icon')
+      .populate('categories', 'name slug')
       .populate('author', 'username firstName lastName avatar')
       .select('title slug excerpt featuredImage viewCount createdAt publishedAt');
   };
@@ -284,7 +284,7 @@ const addStatics = (schema) => {
     return this.find(filter)
       .sort({ viewCount: -1, likeCount: -1 })
       .limit(limit)
-      .populate('categories', 'name slug color icon')
+      .populate('categories', 'name slug')
       .populate('author', 'username firstName lastName avatar')
       .select('title slug excerpt featuredImage viewCount likeCount publishedAt');
   };
@@ -294,7 +294,7 @@ const addStatics = (schema) => {
     return this.find({ status: 'published', featured: true })
       .sort({ sortOrder: 1, publishedAt: -1 })
       .limit(limit)
-      .populate('categories', 'name slug color icon')
+      .populate('categories', 'name slug')
       .populate('author', 'username firstName lastName avatar')
       .select('title slug excerpt featuredImage viewCount likeCount publishedAt sortOrder');
   };

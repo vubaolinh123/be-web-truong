@@ -265,7 +265,7 @@ export const refreshToken = async (req, res) => {
 export const logout = async (req, res) => {
   try {
     // Get user from authentication middleware
-    const userId = req.user?.id;
+    const userId = req.user ? req.user.id : null;
 
     if (userId) {
       // Log the logout action

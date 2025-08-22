@@ -30,7 +30,7 @@ export const searchArticles = async (req, res) => {
       author,
       limit: parseInt(limit),
       sortBy,
-      sortOrder: parseInt(sortOrder)
+      sortOrder: sortOrder === 'asc' ? 1 : -1
     });
 
     logger.info('Tìm kiếm bài viết thành công', {

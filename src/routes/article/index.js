@@ -66,6 +66,14 @@ router.get('/public/related/:categoryId', getRelatedArticlesByCategory);
 // Lấy danh sách tất cả bài viết (admin/faculty/student)
 router.get('/', authenticate, getArticles);
 
+// Admin/Faculty only routes
+// IMPORTANT: These must be defined BEFORE the generic '/:id' route
+router.get('/admin', authenticate, authorize('admin', 'faculty'), getArticles);
+router.get('/admin/statistics', authenticate, authorize('admin', 'faculty'), getArticleStatistics);
+router.get('/admin/search', authenticate, authorize('admin', 'faculty'), searchArticles);
+router.get('/admin/popular', authenticate, authorize('admin', 'faculty'), getPopularArticles);
+router.get('/admin/featured', authenticate, authorize('admin', 'faculty'), getFeaturedArticles);
+
 // Lấy thông tin chi tiết một bài viết (admin/faculty/student)
 router.get('/:id', authenticate, getArticle);
 
@@ -87,17 +95,6 @@ router.patch('/:id/unpublish', authenticate, unpublishArticle);
 // Lấy bài viết liên quan (protected)
 router.get('/:id/related', authenticate, getRelatedArticles);
 
-// Admin/Faculty only routes
-// Lấy thống kê bài viết (admin/faculty)
-router.get('/admin/statistics', authenticate, authorize('admin', 'faculty'), getArticleStatistics);
 
-// Tìm kiếm bài viết (admin/faculty)
-router.get('/admin/search', authenticate, authorize('admin', 'faculty'), searchArticles);
-
-// Lấy bài viết phổ biến (admin/faculty)
-router.get('/admin/popular', authenticate, authorize('admin', 'faculty'), getPopularArticles);
-
-// Lấy bài viết nổi bật (admin/faculty)
-router.get('/admin/featured', authenticate, authorize('admin', 'faculty'), getFeaturedArticles);
 
 export default router;

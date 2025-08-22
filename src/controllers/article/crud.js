@@ -16,7 +16,7 @@ export const getArticles = async (req, res) => {
 
     const {
       status = null,
-      category = null,
+      categoryId = null,
       author = null,
       featured = null,
       search = null
@@ -27,8 +27,8 @@ export const getArticles = async (req, res) => {
     if (status && status !== 'all') {
       filter.status = status;
     }
-    if (category && category !== 'all') {
-      filter.categories = category;
+    if (categoryId && categoryId !== 'all') {
+      filter.categories = categoryId;
     }
     if (author) {
       filter.author = author;
@@ -55,7 +55,7 @@ export const getArticles = async (req, res) => {
       page: paginationParams.page,
       limit: paginationParams.limit,
       filter,
-      originalCategory: category,
+      originalCategoryId: categoryId,
       originalStatus: status
     });
 
@@ -105,7 +105,14 @@ export const getArticles = async (req, res) => {
 // Lấy thông tin chi tiết một bài viết
 export const getArticle = async (req, res) => {
   try {
-    const { id } = req.params;
+        const { id } = req.params;
+
+    // If this is the admin route, call getArticles instead
+    if (id === 'admin') {
+      return getArticles(req, res);
+    }
+
+
     const { incrementView = 'false' } = req.query;
 
     // Tìm bài viết theo ID hoặc slug
