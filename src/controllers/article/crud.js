@@ -1,6 +1,7 @@
 import Article from '../../models/Article/index.js';
 import Category from '../../models/Category/index.js';
 import logger from '../../config/logger.js';
+import { promoteTempImage } from '../../utils/fileUtils.js';
 import {
   normalizeSortOrder,
   validateSortField,
@@ -334,13 +335,16 @@ export const createArticle = async (req, res) => {
       }
     }
 
+    // Promote the temporary image to permanent storage
+    const permanentImageUrl = await promoteTempImage(featuredImage);
+
     // Tạo bài viết mới
     const articleData = {
       title: title.trim(),
       slug: finalSlug,
       content: content.trim(),
       excerpt: excerpt?.trim(),
-      featuredImage,
+      featuredImage: permanentImageUrl,
       categories: finalCategories,
       author: req.user.id,
       status,

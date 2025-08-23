@@ -2,6 +2,7 @@ import express from 'express';
 import userRoutes from './user/index.js';
 import categoryRoutes from './category/index.js';
 import articleRoutes from './article/index.js';
+import imageRoutes from './image.js';
 import { getCurrentVietnamTime, getVietnamTimezoneInfo } from '../utils/timezone.js';
 
 const router = express.Router();
@@ -79,4 +80,7 @@ router.use('/categories', categoryRoutes);
 // Article routes
 router.use('/articles', articleRoutes);
 
+
+// Image routes
+router.use('/images', imageRoutes);
 export default router;

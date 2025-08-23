@@ -136,11 +136,13 @@ export const authenticatedUsers = authorize('student', 'faculty', 'admin');
 
 // Optional authentication middleware (doesn't fail if no token)
 export const optionalAuth = async (req, res, next) => {
+  console.log('--- ENTERING optionalAuth ---');
   try {
     const authHeader = req.header('Authorization');
     
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       // No token provided, continue without authentication
+      console.log('optionalAuth: No token found. Calling next().');
       return next();
     }
 
@@ -165,6 +167,7 @@ export const optionalAuth = async (req, res, next) => {
   } catch (error) {
     // Token is invalid, but continue without authentication
     
+    console.log('optionalAuth: Error caught. Calling next().');
     next();
   }
 };

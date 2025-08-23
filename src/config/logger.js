@@ -1,5 +1,7 @@
 import winston from 'winston';
 import chalk from 'chalk';
+import fs from 'fs';
+import path from 'path';
 
 // HTTP method emojis
 const HTTP_EMOJIS = {
@@ -9,6 +11,19 @@ const HTTP_EMOJIS = {
   DELETE: '🗑️',
   PATCH: '🔄',
   OPTIONS: '⚙️'
+};
+
+// Function to generate date-based log filenames
+const generateLogFilename = (prefix = 'app', extension = 'log') => {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  const hours = String(now.getHours()).padStart(2, '0');
+  const minutes = String(now.getMinutes()).padStart(2, '0');
+  const seconds = String(now.getSeconds()).padStart(2, '0');
+
+  return `${prefix}-${year}-${month}-${day}_${hours}-${minutes}-${seconds}.${extension}`;
 };
 
 // Custom timestamp format with full date and time
@@ -69,9 +84,10 @@ const consoleFormat = winston.format.combine(
   })
 );
 
-// Custom format for file output
+// Custom format for file output with error stack traces
 const fileFormat = winston.format.combine(
   timestampFormat,
+  winston.format.errors({ stack: true }), // Include stack traces for errors
   winston.format.json()
 );
 
@@ -93,7 +109,17 @@ const customLevels = {
   }
 };
 
-// Create logger instance with custom levels and streamlined console output
+// Create logs directory if it doesn't exist
+const logsDir = path.join(process.cwd(), 'logs');
+if (!fs.existsSync(logsDir)) {
+  fs.mkdirSync(logsDir, { recursive: true });
+}
+
+// Generate unique filenames for this application session
+const combinedLogFilename = path.join('logs', generateLogFilename('app'));
+const errorLogFilename = path.join('logs', generateLogFilename('error'));
+
+// Create logger instance with custom levels and date-based log files
 const logger = winston.createLogger({
   levels: customLevels.levels,
   level: process.env.LOG_LEVEL || 'info',
@@ -106,17 +132,19 @@ const logger = winston.createLogger({
       level: 'warn' // Only show warnings and errors in console by default
     }),
 
-    // File transport for errors
+    // File transport for errors with date-based filename
     new winston.transports.File({
-      filename: 'logs/error.log',
+      filename: errorLogFilename,
       level: 'error',
-      format: fileFormat
+      format: fileFormat,
+      options: { flags: 'w' } // Create new file instead of appending
     }),
 
-    // File transport for all logs (including info for debugging)
+    // File transport for all logs with date-based filename
     new winston.transports.File({
-      filename: 'logs/combined.log',
-      format: fileFormat
+      filename: combinedLogFilename,
+      format: fileFormat,
+      options: { flags: 'w' } // Create new file instead of appending
     })
   ]
 });
@@ -133,8 +161,43 @@ logger.request = (message, meta = {}) => {
   consoleTransport.level = originalLevel;
 };
 
+// Enhanced error logging with categorization for better searchability
+logger.logCategorizedError = (category, error, message = '', meta = {}) => {
+  const errorData = {
+    ...meta,
+    category: category, // e.g., 'database', 'api', 'validation', 'auth'
+    logType: 'categorized-error',
+    severity: meta.severity || 'medium' // low, medium, high, critical
+  };
+
+  if (error instanceof Error) {
+    logger.error(message || error.message, {
+      ...errorData,
+      error: error.message,
+      stack: error.stack,
+      name: error.name
+    });
+  } else {
+    logger.error(message, { ...errorData, error: error });
+  }
+};
+
+// Database error logging
+logger.dbError = (error, operation = '', meta = {}) => {
+  logger.logCategorizedError('database', error, `Database error during ${operation}`, {
+    ...meta,
+    operation,
+    severity: 'high'
+  });
+};
+
+// API error logging
 logger.apiError = (message, meta = {}) => {
-  logger.error(message, { ...meta, logType: 'api-error' });
+  logger.logCategorizedError('api', message, message, {
+    ...meta,
+    logType: 'api-error',
+    severity: meta.statusCode >= 500 ? 'high' : 'medium'
+  });
 };
 
 // Add custom success method
@@ -142,13 +205,11 @@ logger.success = (message, meta = {}) => {
   logger.log('success', message, meta);
 };
 
-// Create logs directory if it doesn't exist
-import fs from 'fs';
-import path from 'path';
-
-const logsDir = path.join(process.cwd(), 'logs');
-if (!fs.existsSync(logsDir)) {
-  fs.mkdirSync(logsDir, { recursive: true });
-}
+// Log the current session's log file names for reference
+logger.info('📁 Log files for this session:', {
+  combinedLog: combinedLogFilename,
+  errorLog: errorLogFilename,
+  sessionStart: new Date().toISOString()
+});
 
 export default logger;
