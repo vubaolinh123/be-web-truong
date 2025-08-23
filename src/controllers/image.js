@@ -20,10 +20,14 @@ const uploadAndOptimize = async (req, res, isTemporary = false) => {
   const uniqueId = randomBytes(16).toString('hex');
   const extension = path.extname(originalname);
   const generatedFilename = `${uniqueId}${extension}`;
-  const directory = isTemporary ? 'temp_images' : 'images';
-  const finalPath = path.join(projectRoot, directory, generatedFilename);
+  const directoryName = isTemporary ? 'temp_images' : 'images';
+  const uploadDir = path.join(projectRoot, directoryName);
+  const finalPath = path.join(uploadDir, generatedFilename);
 
   try {
+    // Ensure the upload directory exists, create it if it doesn't
+    await fs.mkdir(uploadDir, { recursive: true });
+
     // Optimize and save the image
     await sharp(tempPath)
       .resize({ width: 1200, withoutEnlargement: true }) // Resize large images
@@ -33,9 +37,9 @@ const uploadAndOptimize = async (req, res, isTemporary = false) => {
     await fs.unlink(tempPath); // Delete the original temporary file from multer
 
     const finalSize = (await fs.stat(finalPath)).size;
-    const fileUrl = `/api/images/${directory}/${generatedFilename}`;
+    const fileUrl = `/api/images/${directoryName}/${generatedFilename}`;
 
-    logger.info(`Image optimized and saved to ${directory}`, {
+    logger.info(`Image optimized and saved to ${directoryName}`, {
       filename: generatedFilename,
       originalName: originalname,
       size: finalSize,

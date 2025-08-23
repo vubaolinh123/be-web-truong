@@ -14,6 +14,15 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+// Configure Express to trust proxy headers (required for production behind reverse proxy)
+// This fixes the express-rate-limit X-Forwarded-For header warning
+if (process.env.NODE_ENV === 'production') {
+  app.set('trust proxy', true);
+} else {
+  // In development, we might still be behind a proxy (like Docker)
+  app.set('trust proxy', 'loopback');
+}
+
 // Connect to database
 connectDatabase();
 
