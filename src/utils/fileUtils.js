@@ -31,7 +31,7 @@ export const promoteTempImage = async (tempUrl) => {
     // Move the file
     await fs.rename(tempPath, permanentPath);
 
-    const permanentUrl = `/api/images/images/${filename}`;
+    const permanentUrl = `/api/images/${filename}`;
     logger.info(`Image promoted from temporary to permanent storage`, { 
       tempUrl,
       permanentUrl 
@@ -44,7 +44,7 @@ export const promoteTempImage = async (tempUrl) => {
       // If the file is already in the permanent directory, return the permanent URL
       try {
         await fs.access(permanentPath);
-        return `/api/images/images/${filename}`;
+        return `/api/images/${filename}`;
       } catch (e) {
         // File doesn't exist in either location
         return null;
