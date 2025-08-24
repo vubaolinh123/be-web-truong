@@ -11,12 +11,12 @@ export const register = async (req, res) => {
     // Check if user already exists
     const existingUser = await User.findByEmailOrUsername(email);
     if (existingUser) {
-      logger.warn('Đăng ký thất bại - người dùng đã tồn tại', { 
-        username, 
+      logger.warn('Đăng ký thất bại - người dùng đã tồn tại', {
+        username,
         email,
-        ip: req.ip 
+        ip: req.ip
       });
-      
+
       return res.status(400).json({
         status: 'error',
         message: 'Tên đăng nhập hoặc email đã được sử dụng',
@@ -79,7 +79,7 @@ export const register = async (req, res) => {
         username: 'Tên đăng nhập',
         email: 'Email'
       };
-      
+
       return res.status(400).json({
         status: 'error',
         message: `${fieldNames[field] || field} đã được sử dụng`,
@@ -98,17 +98,18 @@ export const register = async (req, res) => {
 // User login
 export const login = async (req, res) => {
   try {
+
     const { identifier, password } = req.body;
 
 
 
     // Validate input
     if (!identifier || !password) {
-      logger.warn('Đăng nhập thất bại - thiếu thông tin', { 
+      logger.warn('Đăng nhập thất bại - thiếu thông tin', {
         identifier,
-        ip: req.ip 
+        ip: req.ip
       });
-      
+
       return res.status(400).json({
         status: 'error',
         message: 'Vui lòng nhập tên đăng nhập/email và mật khẩu',
@@ -119,11 +120,11 @@ export const login = async (req, res) => {
     // Find user by email or username
     const user = await User.findByEmailOrUsername(identifier).select('+password');
     if (!user) {
-      logger.warn('Đăng nhập thất bại - người dùng không tồn tại', { 
+      logger.warn('Đăng nhập thất bại - người dùng không tồn tại', {
         identifier,
-        ip: req.ip 
+        ip: req.ip
       });
-      
+
       return res.status(401).json({
         status: 'error',
         message: 'Tên đăng nhập/email hoặc mật khẩu không chính xác',
@@ -134,12 +135,12 @@ export const login = async (req, res) => {
     // Check password
     const isPasswordValid = await user.comparePassword(password);
     if (!isPasswordValid) {
-      logger.warn('Đăng nhập thất bại - mật khẩu sai', { 
+      logger.warn('Đăng nhập thất bại - mật khẩu sai', {
         userId: user._id,
         username: user.username,
-        ip: req.ip 
+        ip: req.ip
       });
-      
+
       return res.status(401).json({
         status: 'error',
         message: 'Tên đăng nhập/email hoặc mật khẩu không chính xác',
@@ -149,13 +150,13 @@ export const login = async (req, res) => {
 
     // Check if user is active
     if (user.status !== 'active' && user.status !== 'pending') {
-      logger.warn('Đăng nhập thất bại - tài khoản bị khóa', { 
+      logger.warn('Đăng nhập thất bại - tài khoản bị khóa', {
         userId: user._id,
         username: user.username,
         status: user.status,
-        ip: req.ip 
+        ip: req.ip
       });
-      
+
       return res.status(403).json({
         status: 'error',
         message: 'Tài khoản của bạn đã bị khóa hoặc đình chỉ',
@@ -213,7 +214,7 @@ export const refreshToken = async (req, res) => {
 
     // Verify refresh token
     const decoded = User.verifyToken(refreshToken);
-    
+
     if (decoded.type !== 'refresh') {
       return res.status(401).json({
         status: 'error',

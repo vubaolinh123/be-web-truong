@@ -335,8 +335,8 @@ export const createArticle = async (req, res) => {
       }
     }
 
-    // Promote the temporary image to permanent storage
-    const permanentImageUrl = await promoteTempImage(featuredImage);
+    // TEMPORARY FIX: Directly use the featuredImage from the request
+    const permanentImageUrl = featuredImage;
 
     // Tạo bài viết mới
     const articleData = {

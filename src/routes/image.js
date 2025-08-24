@@ -2,7 +2,7 @@ import express from 'express';
 import multer from 'multer';
 
 import rateLimit from 'express-rate-limit';
-import { uploadImage, deleteImage, serveImage } from '../controllers/image.js';
+import { uploadImage, deleteImage, serveImage, listImages, bulkDeleteImages, forceDeleteImage } from '../controllers/image.js';
 import { uploadPermanent } from '../middleware/upload.js';
 import { authenticate, adminOnly, facultyOrAdmin } from '../middleware/auth.js';
 import logger from '../config/logger.js';
@@ -26,18 +26,22 @@ const uploadLimiter = rateLimit({
 // 1. POST /api/images/upload - Upload a permanent image (requires faculty or admin role)
 router.post('/upload', authenticate, facultyOrAdmin, uploadLimiter, uploadPermanent.single('image'), uploadImage);
 
+// 2. GET /api/images - List all images (admin only)
+router.get('/', authenticate, adminOnly, listImages);
+
+
 // 3. DELETE /api/images/delete - Delete a permanent image (admin only)
 router.delete('/delete', authenticate, adminOnly, deleteImage);
 
-// 5. GET /api/images/:directory/:filename - Serve an image (publicly accessible)
-// :directory should be 'images' or 'temp_images'
-router.get('/:directory/:filename', (req, res, next) => {
-  const { directory } = req.params;
-  if (directory !== 'images' && directory !== 'temp_images') {
-    return res.status(404).json({ status: 'error', message: 'Not Found' });
-  }
-  serveImage(req, res, next);
-});
+// 4. DELETE /api/images/bulk-delete - Bulk delete images (admin only)
+router.delete('/bulk-delete', authenticate, adminOnly, bulkDeleteImages);
+
+
+// 5. DELETE /api/images/force-delete - Force delete an image (admin only)
+router.delete('/force-delete', authenticate, adminOnly, forceDeleteImage);
+
+// The GET /:directory/:filename route has been removed.
+// Image serving is now handled by the express.static middleware in index.js,
 
 // Custom error handler for multer
 router.use((err, req, res, next) => {

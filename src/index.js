@@ -1,11 +1,17 @@
 import express from 'express';
-import bodyParser from 'body-parser';
+
 import dotenv from 'dotenv';
 import logger from './config/logger.js';
 import connectDatabase from './config/database.js';
 import corsMiddleware from './middleware/cors.js';
 import indexRoutes from './routes/index.js';
 import { timestampTransformMiddleware, getCurrentVietnamTime } from './utils/timezone.js';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const projectRoot = path.resolve(__dirname, '..');
 
 // Load environment variables
 dotenv.config();
@@ -29,9 +35,13 @@ connectDatabase();
 // CORS middleware (configured to allow all origins)
 app.use(corsMiddleware);
 
-// Body parsing middleware
-app.use(bodyParser.json({ limit: '10mb' }));
-app.use(bodyParser.urlencoded({ extended: true, limit: '10mb' }));
+// Body parsing middleware - using built-in Express parsers
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// Serve static files (images) from the /media endpoint
+app.use('/media/images', express.static(path.join(projectRoot, 'images')));
+app.use('/media/temp_images', express.static(path.join(projectRoot, 'temp_images')));
 
 // Timezone transformation middleware (temporarily disabled - using Mongoose transforms instead)
 // app.use('/api', timestampTransformMiddleware(['publishedAt', 'lastModified', 'lastLogin', 'passwordResetExpires']));
