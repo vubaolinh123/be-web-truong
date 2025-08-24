@@ -17,10 +17,11 @@ export const getArticles = async (req, res) => {
 
     const {
       status = null,
-      categoryId = null,
+      category: categorySlug = null, // Renamed for clarity
       author = null,
       featured = null,
-      search = null
+      search = null,
+      sort = 'newest' // Added sort parameter with default
     } = req.query;
 
     // Tạo filter object
@@ -28,8 +29,23 @@ export const getArticles = async (req, res) => {
     if (status && status !== 'all') {
       filter.status = status;
     }
-    if (categoryId && categoryId !== 'all') {
-      filter.categories = categoryId;
+
+    // Handle category slug(s)
+    if (categorySlug && categorySlug !== 'all') {
+      const slugs = categorySlug.split(',').map(s => s.trim());
+      const categories = await Category.find({ slug: { $in: slugs } });
+
+      if (categories.length > 0) {
+        const categoryIds = categories.map(cat => cat._id);
+        filter.categories = { $in: categoryIds };
+      } else {
+        // If no valid categories are found, return no articles
+        return res.status(200).json({
+          status: 'success',
+          message: 'No articles found for the specified categories.',
+          data: { articles: [], pagination: { ...paginationParams, totalArticles: 0, totalPages: 0 } }
+        });
+      }
     }
     if (author) {
       filter.author = author;
@@ -43,29 +59,37 @@ export const getArticles = async (req, res) => {
       filter.$text = { $search: search };
     }
 
-    // Sử dụng utility functions để xử lý sorting
-    const mongoSortOrder = normalizeSortOrder(paginationParams.sortOrder);
-    const validSortBy = validateSortField(paginationParams.sortBy, ARTICLE_SORT_FIELDS);
+    // Handle sorting
+    let sortOption = {};
+    switch (sort) {
+      case 'views':
+        sortOption = { viewCount: -1 };
+        break;
+      case 'popular':
+        sortOption = { likeCount: -1 }; // Assuming popular is based on likes
+        break;
+      case 'oldest':
+        sortOption = { publishedAt: 1 };
+        break;
+      case 'newest':
+      default:
+        sortOption = { publishedAt: -1 };
+        break;
+    }
 
     // Debug logging
     logger.info('Article query parameters', {
-      originalSortOrder: paginationParams.sortOrder,
-      mongoSortOrder,
-      originalSortBy: paginationParams.sortBy,
-      validSortBy,
       page: paginationParams.page,
       limit: paginationParams.limit,
       filter,
-      originalCategoryId: categoryId,
-      originalStatus: status
+      sort: sortOption
     });
 
     // Lấy bài viết với phân trang
     const result = await Article.findWithPagination(filter, {
       page: paginationParams.page,
       limit: paginationParams.limit,
-      sortBy: validSortBy,
-      sortOrder: mongoSortOrder,
+      sort: sortOption, // Use the direct sort object
       populate: true
     });
 
