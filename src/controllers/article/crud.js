@@ -479,7 +479,8 @@ export const updateArticle = async (req, res) => {
       tags,
       featured,
       allowComments,
-      sortOrder
+      sortOrder,
+      publishedAt
     } = req.body;
 
     // Tìm bài viết
@@ -614,8 +615,10 @@ export const updateArticle = async (req, res) => {
       updateData.slug = await Article.generateUniqueSlug(title, id);
     }
 
-    // Xử lý publishedAt khi thay đổi status
-    if (status !== undefined) {
+    // Xử lý publishedAt: ưu tiên giá trị client gửi, nếu không có thì xử lý theo status
+    if (publishedAt !== undefined) {
+      updateData.publishedAt = publishedAt ? new Date(publishedAt) : null;
+    } else if (status !== undefined) {
       if (status === 'published' && article.status !== 'published') {
         updateData.publishedAt = new Date();
       } else if (status !== 'published') {

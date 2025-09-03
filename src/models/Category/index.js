@@ -26,17 +26,14 @@ categorySchema.index({ status: 1, articleCount: -1 });
 categorySchema.index({ status: 1, createdAt: -1 });
 categorySchema.index({ status: 1, name: 1 });
 
-// Text index for search functionality
-categorySchema.index({
-  name: 'text',
-  description: 'text'
-}, {
-  weights: {
-    name: 10,
-    description: 5
-  },
-  name: 'category_text_search'
-});
+// Text index for search functionality (align with existing DB index name and weights)
+categorySchema.index(
+  { name: 'text', description: 'text' },
+  {
+    weights: { name: 10, description: 5 },
+    name: 'category_text_search'
+  }
+);
 
 // Sparse indexes for optional fields
 categorySchema.index({ createdBy: 1 }, { sparse: true });
