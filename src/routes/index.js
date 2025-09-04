@@ -3,6 +3,7 @@ import userRoutes from './user/index.js';
 import categoryRoutes from './category/index.js';
 import articleRoutes from './article/index.js';
 import imageRoutes from './image.js';
+import studentRoutes from './student/index.js';
 import { getCurrentVietnamTime, getVietnamTimezoneInfo } from '../utils/timezone.js';
 
 const router = express.Router();
@@ -52,12 +53,13 @@ router.get('/info', (req, res) => {
         admin: '/api/articles',
         statistics: '/api/articles/admin/statistics',
         search: '/api/articles/admin/search'
+      },
+      students: {
+        register: '/api/students/register'
       }
     },
     timestamp: getCurrentVietnamTime()
   };
-
-
 
   res.status(200).json(apiInfo);
 });
@@ -80,6 +82,8 @@ router.use('/categories', categoryRoutes);
 // Article routes
 router.use('/articles', articleRoutes);
 
+// Student routes
+router.use('/students', studentRoutes);
 
 // Image routes
 router.use('/images', imageRoutes);
