@@ -13,7 +13,8 @@ export {
   getRelatedArticles,
   getRelatedArticlesByCategory,
   getPopularArticles,
-  getFeaturedArticles
+  getFeaturedArticles,
+  getArticlesByCategorySlug
 } from './search.js';
 
 export {

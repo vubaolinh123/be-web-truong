@@ -35,7 +35,7 @@ const studentRegistrationSchema = new mongoose.Schema({
     maxlength: [150, 'Tên ngành không được vượt quá 150 ký tự']
   },
   // Thông tin meta để theo dõi
-  ipAddress: { type: String, index: true },
+  ipAddress: { type: String },
   userAgent: { type: String },
 }, {
   timestamps: true,
@@ -43,11 +43,21 @@ const studentRegistrationSchema = new mongoose.Schema({
   toObject: { virtuals: true, transform: mongooseTimestampTransform() }
 });
 
+// Status for workflow management
+studentRegistrationSchema.add({
+  status: {
+    type: String,
+    enum: ['new', 'contacted', 'enrolled', 'rejected'],
+    default: 'new',
+    index: true,
+  },
+});
+
 // Indexes
 studentRegistrationSchema.index({ createdAt: -1 });
 studentRegistrationSchema.index({ email: 1 });
 studentRegistrationSchema.index({ phone: 1 });
-studentRegistrationSchema.index({ ipAddress: 1 });
+studentRegistrationSchema.index({ ipAddress: 1 }); // keep single index definition here
 
 const StudentRegistration = mongoose.model('StudentRegistration', studentRegistrationSchema);
 

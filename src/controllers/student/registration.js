@@ -101,3 +101,79 @@ export const registerStudent = async (req, res) => {
   }
 };
 
+// GET /api/students/registrations
+export const listRegistrations = async (req, res) => {
+  try {
+    const page = Math.max(1, parseInt(req.query.page || '1', 10));
+    const limit = Math.max(1, Math.min(100, parseInt(req.query.limit || '10', 10)));
+    const skip = (page - 1) * limit;
+
+    const { q, status, from, to } = req.query;
+
+    const filter = {};
+    if (status && ['new', 'contacted', 'enrolled', 'rejected'].includes(String(status))) {
+      filter.status = status;
+    }
+    if (q) {
+      const keyword = String(q).trim();
+      filter.$or = [
+        { name: { $regex: keyword, $options: 'i' } },
+        { email: { $regex: keyword, $options: 'i' } },
+      ];
+    }
+    if (from || to) {
+      filter.createdAt = {};
+      if (from) filter.createdAt.$gte = new Date(from);
+      if (to) {
+        const toDate = new Date(to);
+        // include the whole day
+        toDate.setHours(23, 59, 59, 999);
+        filter.createdAt.$lte = toDate;
+      }
+    }
+
+    const [registrations, total] = await Promise.all([
+      StudentRegistration.find(filter)
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit),
+      StudentRegistration.countDocuments(filter),
+    ]);
+
+    return res.status(200).json({
+      status: 'success',
+      message: 'Lấy danh sách đăng ký thành công',
+      data: {
+        registrations,
+        total,
+        page,
+        limit,
+      },
+    });
+  } catch (error) {
+    logger.apiError('❌ Lỗi khi lấy danh sách đăng ký', { error: error.message, stack: error.stack });
+    return res.status(500).json({ status: 'error', message: 'Không thể lấy danh sách đăng ký', data: null });
+  }
+};
+
+// PATCH /api/students/registrations/:id/status
+export const updateRegistrationStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body || {};
+    const allowed = ['new', 'contacted', 'enrolled', 'rejected'];
+    if (!allowed.includes(status)) {
+      return res.status(400).json({ status: 'error', message: 'Trạng thái không hợp lệ', data: null });
+    }
+    const doc = await StudentRegistration.findByIdAndUpdate(id, { status }, { new: true });
+    if (!doc) return res.status(404).json({ status: 'error', message: 'Không tìm thấy đăng ký', data: null });
+
+    return res.status(200).json({ status: 'success', message: 'Cập nhật trạng thái thành công', data: { registration: doc } });
+  } catch (error) {
+    logger.apiError('❌ Lỗi khi cập nhật trạng thái đăng ký', { error: error.message, stack: error.stack });
+    return res.status(500).json({ status: 'error', message: 'Không thể cập nhật trạng thái đăng ký', data: null });
+  }
+};
+
+
+

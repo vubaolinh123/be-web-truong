@@ -1,6 +1,145 @@
 import Article from '../../models/Article/index.js';
 import logger from '../../config/logger.js';
 
+import Category from '../../models/Category/index.js';
+import { parsePaginationParams } from '../../utils/sortUtils.js';
+
+// Simple in-memory cache for by-category results
+const categoryCache = new Map();
+const CACHE_TTL_MS = 60 * 1000; // 60 seconds
+
+const cacheKey = (slug, query) => `${slug}|${JSON.stringify(query)}`;
+const setCache = (key, value) => categoryCache.set(key, { value, expires: Date.now() + CACHE_TTL_MS });
+const getCache = (key) => {
+  const entry = categoryCache.get(key);
+  if (!entry) return null;
+  if (Date.now() > entry.expires) { categoryCache.delete(key); return null; }
+  return entry.value;
+};
+
+// Lấy bài viết theo category slug với phân trang và lọc
+export const getArticlesByCategorySlug = async (req, res) => {
+  try {
+    const { categorySlug } = req.params;
+    const {
+      limit = 10,
+      page = 1,
+      sort = 'newest', // 'newest' | 'oldest' | 'popular' (by viewCount)
+      featured,
+      search,
+      status = 'published'
+    } = req.query;
+
+    // Validate query params
+    const allowedSort = ['newest', 'oldest', 'popular'];
+    if (sort && !allowedSort.includes(String(sort))) {
+      return res.status(400).json({ status: 'error', message: 'Tham số sắp xếp không hợp lệ (newest, oldest, popular)', data: null });
+    }
+
+    const allowedStatus = ['draft', 'published', 'archived', 'all'];
+    if (status && !allowedStatus.includes(String(status))) {
+      return res.status(400).json({ status: 'error', message: 'Trạng thái bài viết không hợp lệ', data: null });
+    }
+
+    if (featured !== undefined && !['true', 'false'].includes(String(featured))) {
+      return res.status(400).json({ status: 'error', message: 'Giá trị featured phải là true hoặc false', data: null });
+    }
+
+    // Find category
+    const slug = String(categorySlug).toLowerCase().trim();
+    const category = await Category.findOne({ slug });
+    if (!category) {
+      return res.status(404).json({ status: 'error', message: 'Danh mục không tồn tại', data: null });
+    }
+
+    // Cache check (by slug + sanitized query)
+    const key = cacheKey(slug, { limit, page, sort, featured, search, status });
+    const cached = getCache(key);
+    if (cached) {
+      return res.status(200).json(cached);
+    }
+
+    // Build filter
+    const filter = {};
+    if (status && status !== 'all') filter.status = status;
+    // Restrict to target category (articles.categories contains category._id)
+    filter.categories = { $in: [category._id] };
+
+    if (featured !== undefined) {
+      filter.featured = String(featured) === 'true';
+    }
+
+    if (search) {
+      // Text search on title/content (requires index)
+      filter.$text = { $search: String(search) };
+    }
+
+    // Sort
+    let sortOption = {};
+    switch (sort) {
+      case 'popular':
+        sortOption = { viewCount: -1 };
+        break;
+      case 'oldest':
+        sortOption = { publishedAt: 1 };
+        break;
+      case 'newest':
+      default:
+        sortOption = { publishedAt: -1 };
+        break;
+    }
+
+    // Pagination
+    const { page: p, limit: l } = parsePaginationParams({ page, limit });
+
+    // Query using model pagination helper with populate
+    const result = await Article.findWithPagination(filter, {
+      page: p,
+      limit: l,
+      sort: sortOption,
+      populate: true
+    });
+
+    logger.info('Lấy bài viết theo category slug thành công', {
+      categoryId: category._id,
+      categorySlug: slug,
+      total: result.pagination?.totalArticles,
+      page: p,
+      limit: l,
+      sort: sortOption,
+      featured: filter.featured,
+      hasSearch: !!search,
+      ip: req.ip,
+      userId: req.user?.id
+    });
+
+    const responseBody = {
+      status: 'success',
+      message: 'Lấy bài viết theo danh mục thành công',
+      data: {
+        articles: result.articles.map(a => a.getBasicInfo()),
+        pagination: result.pagination,
+        category: { id: category.id, name: category.name, slug: category.slug }
+      }
+    };
+
+    setCache(key, responseBody);
+
+    return res.status(200).json(responseBody);
+  } catch (error) {
+    logger.error('Lỗi khi lấy bài viết theo category slug', {
+      error: error.message,
+      stack: error.stack,
+      params: req.params,
+      query: req.query,
+      ip: req.ip,
+      userId: req.user?.id
+    });
+
+    return res.status(500).json({ status: 'error', message: 'Lỗi hệ thống khi lấy bài viết theo danh mục', data: null });
+  }
+};
+
 // Tìm kiếm bài viết
 export const searchArticles = async (req, res) => {
   try {

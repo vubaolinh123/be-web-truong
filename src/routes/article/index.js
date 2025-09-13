@@ -13,13 +13,21 @@ import {
   getPopularArticles,
   getFeaturedArticles,
   publishArticle,
-  unpublishArticle
+  unpublishArticle,
+  getArticlesByCategorySlug
 } from '../../controllers/article/index.js';
 import { authenticate, authorize } from '../../middleware/auth.js';
 
 const router = express.Router();
 
 // Public routes (không cần authentication)
+// Public: Lấy bài viết theo category slug
+router.get('/by-category/:categorySlug', (req, res, next) => {
+  // Mặc định chỉ trả published nếu không truyền status
+  if (!req.query.status) req.query.status = 'published';
+  next();
+}, getArticlesByCategorySlug);
+
 // Lấy danh sách bài viết đã xuất bản
 router.get('/public', async (req, res, next) => {
   req.query.status = 'published'; // Force chỉ lấy published articles

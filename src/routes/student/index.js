@@ -1,8 +1,9 @@
 import express from 'express';
-import rateLimit from 'express-rate-limit';
-import { registerStudent } from '../../controllers/student/registration.js';
+import rateLimit, { ipKeyGenerator } from 'express-rate-limit';
+import { registerStudent, listRegistrations, updateRegistrationStatus } from '../../controllers/student/registration.js';
 import { ddosProtection } from '../../middleware/ddosProtection.js';
 import logger from '../../config/logger.js';
+import { authenticate, authorize } from '../../middleware/auth.js';
 
 const router = express.Router();
 
@@ -12,7 +13,9 @@ const limiter = rateLimit({
   max: 3,
   standardHeaders: true,
   legacyHeaders: false,
-  keyGenerator: (req) => req.ip || req.connection?.remoteAddress || 'unknown',
+  // Use helper to properly normalize IPv6/IPv4 addresses per docs:
+  // https://express-rate-limit.github.io/ERR_ERL_KEY_GEN_IPV6/
+  keyGenerator: (req) => ipKeyGenerator(req),
   skip: (req) => process.env.NODE_ENV !== 'production' && (req.headers['x-test-bypass-rl'] === 'true'),
   handler: (req, res) => {
     const retryAfterMs = req.rateLimit.resetTime ? (new Date(req.rateLimit.resetTime)).getTime() - Date.now() : 60*1000;
@@ -26,8 +29,14 @@ const limiter = rateLimit({
   },
 });
 
-// Apply DDoS protection and rate limiter, then controller
+// POST: create registration (public)
 router.post('/register', ddosProtection, limiter, registerStudent);
+
+// GET: list registrations for admin, with filters & pagination (protected)
+router.get('/registrations', authenticate, authorize('admin'), listRegistrations);
+
+// PATCH: update registration status (protected)
+router.patch('/registrations/:id/status', authenticate, authorize('admin'), updateRegistrationStatus);
 
 export default router;
 
