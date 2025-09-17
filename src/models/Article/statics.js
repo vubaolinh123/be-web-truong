@@ -5,35 +5,35 @@ const addStatics = (schema) => {
   schema.statics.findBySlug = function(slug) {
     return this.findOne({ slug: slug.toLowerCase() })
       .populate('categories', 'name slug')
-      .populate('author', 'username firstName lastName avatar');
+      .populate('author', 'username firstName lastName avatar role');
   };
 
   // Tìm các bài viết đã xuất bản
   schema.statics.findPublished = function(filter = {}) {
     return this.find({ ...filter, status: 'published' })
       .populate('categories', 'name slug')
-      .populate('author', 'username firstName lastName avatar');
+      .populate('author', 'username firstName lastName avatar role');
   };
 
   // Tìm các bài viết theo trạng thái
   schema.statics.findByStatus = function(status, filter = {}) {
     return this.find({ ...filter, status })
       .populate('categories', 'name slug')
-      .populate('author', 'username firstName lastName avatar');
+      .populate('author', 'username firstName lastName avatar role');
   };
 
   // Tìm các bài viết theo danh mục
   schema.statics.findByCategory = function(categoryId, filter = {}) {
     return this.find({ ...filter, categories: categoryId })
       .populate('categories', 'name slug')
-      .populate('author', 'username firstName lastName avatar');
+      .populate('author', 'username firstName lastName avatar role');
   };
 
   // Tìm các bài viết theo tác giả
   schema.statics.findByAuthor = function(authorId, filter = {}) {
     return this.find({ ...filter, author: authorId })
       .populate('categories', 'name slug')
-      .populate('author', 'username firstName lastName avatar');
+      .populate('author', 'username firstName lastName avatar role');
   };
 
   // Lấy thống kê bài viết
@@ -145,6 +145,7 @@ const addStatics = (schema) => {
       limit = 10,
       sortBy = 'createdAt',
       sortOrder = -1,
+      sort = null,
       select = null,
       populate = true
     } = options;
@@ -161,22 +162,27 @@ const addStatics = (schema) => {
     const validSortBy = allowedSortFields.includes(sortBy) ? sortBy : 'createdAt';
 
     const skip = (page - 1) * limit;
-    
+
     let query = this.find(filter);
-    
+
     if (select) {
       query = query.select(select);
     }
-    
+
     if (populate) {
       query = query
         .populate('categories', 'name slug')
-        .populate('author', 'username firstName lastName avatar');
+        .populate('author', 'username firstName lastName avatar role');
     }
-    
+
+    // Determine sort: prefer explicit sort object if provided, otherwise use sortBy/sortOrder
+    const sortObject = (sort && typeof sort === 'object' && Object.keys(sort).length > 0)
+      ? sort
+      : { [validSortBy]: validSortOrder };
+
     const [articles, total] = await Promise.all([
       query
-        .sort({ [validSortBy]: validSortOrder })
+        .sort(sortObject)
         .skip(skip)
         .limit(limit),
       this.countDocuments(filter)
@@ -234,7 +240,7 @@ const addStatics = (schema) => {
       .sort({ [sortBy]: sortOrder })
       .limit(limit)
       .populate('categories', 'name slug')
-      .populate('author', 'username firstName lastName avatar')
+      .populate('author', 'username firstName lastName avatar role')
       .select('title slug excerpt featuredImage viewCount likeCount createdAt publishedAt');
   };
 
@@ -256,7 +262,7 @@ const addStatics = (schema) => {
       .sort({ viewCount: -1, createdAt: -1 })
       .limit(limit)
       .populate('categories', 'name slug')
-      .populate('author', 'username firstName lastName avatar')
+      .populate('author', 'username firstName lastName avatar role')
       .select('title slug excerpt featuredImage viewCount createdAt publishedAt');
   };
 
@@ -285,7 +291,7 @@ const addStatics = (schema) => {
       .sort({ viewCount: -1, likeCount: -1 })
       .limit(limit)
       .populate('categories', 'name slug')
-      .populate('author', 'username firstName lastName avatar')
+      .populate('author', 'username firstName lastName avatar role')
       .select('title slug excerpt featuredImage viewCount likeCount publishedAt');
   };
 
@@ -295,7 +301,7 @@ const addStatics = (schema) => {
       .sort({ sortOrder: 1, publishedAt: -1 })
       .limit(limit)
       .populate('categories', 'name slug')
-      .populate('author', 'username firstName lastName avatar')
+      .populate('author', 'username firstName lastName avatar role')
       .select('title slug excerpt featuredImage viewCount likeCount publishedAt sortOrder');
   };
 

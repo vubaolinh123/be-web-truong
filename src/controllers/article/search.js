@@ -27,7 +27,9 @@ export const getArticlesByCategorySlug = async (req, res) => {
       sort = 'newest', // 'newest' | 'oldest' | 'popular' (by viewCount)
       featured,
       search,
-      status = 'published'
+      status = 'published',
+      authorRole = null,
+      noCache = 'false'
     } = req.query;
 
     // Validate query params
@@ -52,11 +54,13 @@ export const getArticlesByCategorySlug = async (req, res) => {
       return res.status(404).json({ status: 'error', message: 'Danh mục không tồn tại', data: null });
     }
 
-    // Cache check (by slug + sanitized query)
-    const key = cacheKey(slug, { limit, page, sort, featured, search, status });
-    const cached = getCache(key);
-    if (cached) {
-      return res.status(200).json(cached);
+    // Cache check (by slug + sanitized query), allow bypass via noCache=true
+    const key = cacheKey(slug, { limit, page, sort, featured, search, status, authorRole });
+    if (String(noCache) !== 'true') {
+      const cached = getCache(key);
+      if (cached) {
+        return res.status(200).json(cached);
+      }
     }
 
     // Build filter
@@ -64,6 +68,13 @@ export const getArticlesByCategorySlug = async (req, res) => {
     if (status && status !== 'all') filter.status = status;
     // Restrict to target category (articles.categories contains category._id)
     filter.categories = { $in: [category._id] };
+    // Optional author role filter (admin-only program pages)
+    if (authorRole) filter.author = await (async () => {
+      // Find users by role and use $in on author
+      const User = (await import('../../models/User/index.js')).default;
+      const admins = await User.find({ role: String(authorRole) }).select('_id').lean();
+      return { $in: admins.map(u => u._id) };
+    })();
 
     if (featured !== undefined) {
       filter.featured = String(featured) === 'true';
@@ -113,17 +124,31 @@ export const getArticlesByCategorySlug = async (req, res) => {
       userId: req.user?.id
     });
 
+    const detailedArticles = result.articles.map(a => a.getDetailedInfo());
+
+    // Debug logging to verify content presence
+    if (detailedArticles.length > 0) {
+      logger.info('ByCategory detailed mapping debug', {
+        categorySlug: slug,
+        hasContent: !!detailedArticles[0].content,
+        contentLength: detailedArticles[0].content ? detailedArticles[0].content.length : 0,
+        fieldsSample: Object.keys(detailedArticles[0]).slice(0, 12)
+      });
+    }
+
     const responseBody = {
       status: 'success',
       message: 'Lấy bài viết theo danh mục thành công',
       data: {
-        articles: result.articles.map(a => a.getBasicInfo()),
+        articles: detailedArticles,
         pagination: result.pagination,
         category: { id: category.id, name: category.name, slug: category.slug }
       }
     };
 
-    setCache(key, responseBody);
+    if (String(noCache) !== 'true') {
+      setCache(key, responseBody);
+    }
 
     return res.status(200).json(responseBody);
   } catch (error) {

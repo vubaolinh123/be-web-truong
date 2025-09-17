@@ -17,11 +17,15 @@ export const getArticles = async (req, res) => {
 
     const {
       status = null,
-      category: categorySlug = null, // Renamed for clarity
-      author = null,
+      category: categorySlug = null, // support slug-based filtering (legacy)
+      categoryId = null,            // support id-based filtering (UI uses this)
+      author = null,                // legacy author param
+      authorId = null,              // UI uses this param
       featured = null,
       search = null,
-      sort = 'newest' // Added sort parameter with default
+      sort = 'newest',              // legacy sort preset: newest|oldest|popular|views
+      sortBy = null,               // UI uses sortBy field name
+      sortOrder = 'desc'           // UI uses asc|desc
     } = req.query;
 
     // Tạo filter object
@@ -30,51 +34,77 @@ export const getArticles = async (req, res) => {
       filter.status = status;
     }
 
-    // Handle category slug(s)
-    if (categorySlug && categorySlug !== 'all') {
-      const slugs = categorySlug.split(',').map(s => s.trim());
-      const categories = await Category.find({ slug: { $in: slugs } });
-
-      if (categories.length > 0) {
-        const categoryIds = categories.map(cat => cat._id);
-        filter.categories = { $in: categoryIds };
-      } else {
-        // If no valid categories are found, return no articles
-        return res.status(200).json({
-          status: 'success',
-          message: 'No articles found for the specified categories.',
-          data: { articles: [], pagination: { ...paginationParams, totalArticles: 0, totalPages: 0 } }
-        });
+    // Handle category by ID (preferred from UI)
+    if (categoryId && categoryId !== 'all') {
+      const ids = String(categoryId).split(',').map(s => s.trim()).filter(Boolean);
+      if (ids.length > 0) {
+        filter.categories = { $in: ids };
+      }
+    } else if (categorySlug && categorySlug !== 'all') {
+      // Fallback: handle category slug(s)
+      const slugs = String(categorySlug).split(',').map(s => s.trim()).filter(Boolean);
+      if (slugs.length > 0) {
+        const categories = await Category.find({ slug: { $in: slugs } });
+        if (categories.length > 0) {
+          const categoryIds = categories.map(cat => cat._id);
+          filter.categories = { $in: categoryIds };
+        } else {
+          // If no valid categories are found, return no articles
+          return res.status(200).json({
+            status: 'success',
+            message: 'No articles found for the specified categories.',
+            data: { articles: [], pagination: { ...paginationParams, totalArticles: 0, totalPages: 0 } }
+          });
+        }
       }
     }
-    if (author) {
+
+    // Author by ID (preferred)
+    if (authorId && authorId !== 'all') {
+      filter.author = authorId;
+    } else if (author) {
       filter.author = author;
     }
+
     if (featured !== null) {
-      filter.featured = featured === 'true';
+      filter.featured = String(featured) === 'true';
     }
 
     // Nếu có search, sử dụng text search
     if (search) {
-      filter.$text = { $search: search };
+      filter.$text = { $search: String(search) };
     }
 
-    // Handle sorting
-    let sortOption = {};
-    switch (sort) {
-      case 'views':
-        sortOption = { viewCount: -1 };
-        break;
-      case 'popular':
-        sortOption = { likeCount: -1 }; // Assuming popular is based on likes
-        break;
-      case 'oldest':
-        sortOption = { publishedAt: 1 };
-        break;
-      case 'newest':
-      default:
-        sortOption = { publishedAt: -1 };
-        break;
+    // Determine sorting
+    let paginationOptions = {
+      page: paginationParams.page,
+      limit: paginationParams.limit,
+      populate: true
+    };
+
+    if (sortBy) {
+      // Use field-based sorting from UI
+      paginationOptions.sortBy = String(sortBy);
+      paginationOptions.sortOrder = (String(sortOrder).toLowerCase() === 'asc') ? 1 : -1;
+    } else {
+      // Backward-compatible preset sorting
+      let sortOption = {};
+      switch (sort) {
+        case 'views':
+          sortOption = { viewCount: -1 };
+          break;
+        case 'popular':
+          sortOption = { likeCount: -1 };
+          break;
+        case 'oldest':
+          sortOption = { publishedAt: 1 };
+          break;
+        case 'newest':
+        default:
+          sortOption = { publishedAt: -1 };
+          break;
+      }
+      paginationOptions.sort = sortOption;
     }
 
     // Debug logging
@@ -82,16 +112,13 @@ export const getArticles = async (req, res) => {
       page: paginationParams.page,
       limit: paginationParams.limit,
       filter,
-      sort: sortOption
+      sortBy: paginationOptions.sortBy,
+      sortOrder: paginationOptions.sortOrder,
+      sort: paginationOptions.sort
     });
 
     // Lấy bài viết với phân trang
-    const result = await Article.findWithPagination(filter, {
-      page: paginationParams.page,
-      limit: paginationParams.limit,
-      sort: sortOption, // Use the direct sort object
-      populate: true
-    });
+    const result = await Article.findWithPagination(filter, paginationOptions);
 
     logger.info('Lấy danh sách bài viết thành công', {
       totalArticles: result.pagination.totalArticles,
