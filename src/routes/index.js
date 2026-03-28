@@ -3,6 +3,7 @@ import userRoutes from './user/index.js';
 import categoryRoutes from './category/index.js';
 import articleRoutes from './article/index.js';
 import imageRoutes from './image.js';
+import galleryRoutes from './gallery.js';
 import studentRoutes from './student/index.js';
 import { getCurrentVietnamTime, getVietnamTimezoneInfo } from '../utils/timezone.js';
 
@@ -87,4 +88,7 @@ router.use('/students', studentRoutes);
 
 // Image routes
 router.use('/images', imageRoutes);
+
+// Gallery routes
+router.use('/gallery', galleryRoutes);
 export default router;
