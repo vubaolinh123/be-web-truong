@@ -116,6 +116,152 @@ export const createAlbum = async (req, res) => {
   }
 };
 
+export const updateAlbum = async (req, res) => {
+  const { albumId } = req.params;
+
+  if (!mongoose.Types.ObjectId.isValid(albumId)) {
+    return res.status(400).json({
+      status: 'error',
+      message: 'albumId không hợp lệ',
+      data: null,
+    });
+  }
+
+  const { title, slug, description } = req.body;
+
+  if (!title || !title.trim()) {
+    return res.status(400).json({
+      status: 'error',
+      message: 'Tiêu đề album là bắt buộc',
+      data: null,
+    });
+  }
+
+  try {
+    const album = await Album.findById(albumId);
+
+    if (!album) {
+      return res.status(404).json({
+        status: 'error',
+        message: 'Không tìm thấy album',
+        data: null,
+      });
+    }
+
+    album.title = title.trim();
+    if (slug && slug.trim()) {
+      album.slug = slug.trim();
+    }
+    if (description !== undefined) {
+      album.description = description ? description.trim() : '';
+    }
+    album.updatedAt = new Date();
+
+    await album.save();
+
+    logger.info('Cập nhật album thành công', {
+      albumId,
+      title: album.title,
+      slug: album.slug,
+      adminId: req.user?.id,
+      ip: req.ip,
+    });
+
+    return res.status(200).json({
+      status: 'success',
+      message: 'Cập nhật album thành công',
+      data: {
+        album: {
+          _id: album._id,
+          title: album.title,
+          slug: album.slug,
+          description: album.description,
+          coverImageUrl: album.coverImageUrl,
+          photoCount: album.photos ? album.photos.length : 0,
+          createdAt: album.createdAt,
+          updatedAt: album.updatedAt,
+        },
+      },
+    });
+  } catch (error) {
+    if (error.code === 11000) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'Slug đã tồn tại, vui lòng chọn slug khác',
+        data: null,
+      });
+    }
+
+    logger.error('Lỗi khi cập nhật album', {
+      error: error.message,
+      stack: error.stack,
+      albumId,
+      ip: req.ip,
+    });
+
+    return res.status(500).json({
+      status: 'error',
+      message: 'Lỗi hệ thống khi cập nhật album',
+      data: null,
+    });
+  }
+};
+
+export const deleteAlbum = async (req, res) => {
+  const { albumId } = req.params;
+
+  if (!mongoose.Types.ObjectId.isValid(albumId)) {
+    return res.status(400).json({
+      status: 'error',
+      message: 'albumId không hợp lệ',
+      data: null,
+    });
+  }
+
+  try {
+    const album = await Album.findById(albumId);
+
+    if (!album) {
+      return res.status(404).json({
+        status: 'error',
+        message: 'Không tìm thấy album',
+        data: null,
+      });
+    }
+
+    await Album.findByIdAndDelete(albumId);
+
+    logger.info('Xóa album thành công', {
+      albumId,
+      title: album.title,
+      photoCount: album.photos ? album.photos.length : 0,
+      adminId: req.user?.id,
+      ip: req.ip,
+    });
+
+    return res.status(200).json({
+      status: 'success',
+      message: 'Xóa album thành công',
+      data: {
+        deletedAlbumId: albumId,
+      },
+    });
+  } catch (error) {
+    logger.error('Lỗi khi xóa album', {
+      error: error.message,
+      stack: error.stack,
+      albumId,
+      ip: req.ip,
+    });
+
+    return res.status(500).json({
+      status: 'error',
+      message: 'Lỗi hệ thống khi xóa album',
+      data: null,
+    });
+  }
+};
+
 export const getAlbumPhotos = async (req, res) => {
   const { albumId } = req.params;
   const page = Math.max(1, parseInt(req.query.page, 10) || 1);

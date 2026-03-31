@@ -3,6 +3,8 @@ import multer from 'multer';
 import {
   listAlbums,
   createAlbum,
+  updateAlbum,
+  deleteAlbum,
   getAlbumPhotos,
   uploadPhotoToAlbum,
   deletePhoto,
@@ -19,6 +21,8 @@ router.get('/:albumId/photos', getAlbumPhotos);
 
 // Protected routes
 router.post('/', authenticate, adminOnly, createAlbum);
+router.put('/:albumId', authenticate, adminOnly, updateAlbum);
+router.delete('/:albumId', authenticate, adminOnly, deleteAlbum);
 router.post(
   '/:albumId/photos',
   authenticate,
