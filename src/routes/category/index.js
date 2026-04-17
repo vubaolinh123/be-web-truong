@@ -10,7 +10,7 @@ import {
   getPopularCategories,
   getOrderedCategories
 } from '../../controllers/category/index.js';
-import { authenticate, authorize } from '../../middleware/auth.js';
+import { authenticate, authorize, restrictCategories, restrictCategoryManagement } from '../../middleware/auth.js';
 
 const router = express.Router();
 
@@ -37,31 +37,31 @@ router.get('/public/search', async (req, res, next) => {
 });
 
 // Protected routes (cần authentication)
-// Lấy danh sách tất cả danh mục (admin/faculty)
-router.get('/', authenticate, authorize('admin', 'faculty'), getCategories);
+// Lấy danh sách tất cả danh mục (admin/faculty) - có giới hạn category cho restricted admin
+router.get('/', authenticate, authorize('admin', 'faculty'), restrictCategories, getCategories);
 
 // Lấy thông tin chi tiết một danh mục (admin/faculty)
-router.get('/:id', authenticate, authorize('admin', 'faculty'), getCategory);
+router.get('/:id', authenticate, authorize('admin', 'faculty'), restrictCategories, getCategory);
 
-// Tạo danh mục mới (admin only)
-router.post('/', authenticate, authorize('admin'), createCategory);
+// Tạo danh mục mới (admin only) - restricted admin không được tạo
+router.post('/', authenticate, authorize('admin'), restrictCategories, restrictCategoryManagement, createCategory);
 
-// Cập nhật danh mục (admin only)
-router.put('/:id', authenticate, authorize('admin'), updateCategory);
+// Cập nhật danh mục (admin only) - restricted admin không được cập nhật
+router.put('/:id', authenticate, authorize('admin'), restrictCategories, restrictCategoryManagement, updateCategory);
 
-// Xóa danh mục (admin only)
-router.delete('/:id', authenticate, authorize('admin'), deleteCategory);
+// Xóa danh mục (admin only) - restricted admin không được xóa
+router.delete('/:id', authenticate, authorize('admin'), restrictCategories, restrictCategoryManagement, deleteCategory);
 
-// Lấy thống kê danh mục (admin/faculty)
-router.get('/admin/statistics', authenticate, authorize('admin', 'faculty'), getCategoryStatistics);
+// Lấy thống kê danh mục (admin/faculty) - có giới hạn category cho restricted admin
+router.get('/admin/statistics', authenticate, authorize('admin', 'faculty'), restrictCategories, getCategoryStatistics);
 
-// Tìm kiếm danh mục (admin/faculty)
-router.get('/admin/search', authenticate, authorize('admin', 'faculty'), searchCategories);
+// Tìm kiếm danh mục (admin/faculty) - có giới hạn category cho restricted admin
+router.get('/admin/search', authenticate, authorize('admin', 'faculty'), restrictCategories, searchCategories);
 
-// Lấy danh mục phổ biến (admin/faculty)
-router.get('/admin/popular', authenticate, authorize('admin', 'faculty'), getPopularCategories);
+// Lấy danh mục phổ biến (admin/faculty) - có giới hạn category cho restricted admin
+router.get('/admin/popular', authenticate, authorize('admin', 'faculty'), restrictCategories, getPopularCategories);
 
-// Lấy danh mục theo thứ tự hiển thị (admin/faculty)
-router.get('/admin/ordered', authenticate, authorize('admin', 'faculty'), getOrderedCategories);
+// Lấy danh mục theo thứ tự hiển thị (admin/faculty) - có giới hạn category cho restricted admin
+router.get('/admin/ordered', authenticate, authorize('admin', 'faculty'), restrictCategories, getOrderedCategories);
 
 export default router;

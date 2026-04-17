@@ -20,11 +20,22 @@ export const searchCategories = async (req, res) => {
       });
     }
 
+    let filter = {};
+    if (status) {
+      filter.status = status;
+    }
+
+    // Nếu admin bị giới hạn category, chỉ tìm category được phép
+    if (req.categoryFilter && req.categoryFilter.length > 0) {
+      filter.slug = { $in: req.categoryFilter };
+    }
+
     const categories = await Category.search(keyword.trim(), {
       status,
       limit: parseInt(limit),
       sortBy,
-      sortOrder: parseInt(sortOrder)
+      sortOrder: parseInt(sortOrder),
+      filter
     });
 
     logger.info('Tìm kiếm danh mục thành công', {
@@ -68,8 +79,14 @@ export const getPopularCategories = async (req, res) => {
 
     const categories = await Category.getPopularCategories(parseInt(limit));
 
+    // Nếu admin bị giới hạn category, chỉ trả về các category được phép
+    let filteredCategories = categories;
+    if (req.categoryFilter && req.categoryFilter.length > 0) {
+      filteredCategories = categories.filter(cat => req.categoryFilter.includes(cat.slug));
+    }
+
     logger.info('Lấy danh mục phổ biến thành công', {
-      resultCount: categories.length,
+      resultCount: filteredCategories.length,
       userId: req.user?.id,
       ip: req.ip
     });
@@ -78,7 +95,7 @@ export const getPopularCategories = async (req, res) => {
       status: 'success',
       message: 'Lấy danh mục phổ biến thành công',
       data: {
-        categories: categories.map(category => category.getBasicInfo())
+        categories: filteredCategories.map(category => category.getBasicInfo())
       }
     });
 
@@ -106,8 +123,14 @@ export const getOrderedCategories = async (req, res) => {
 
     const categories = await Category.getOrderedCategories(status);
 
+    // Nếu admin bị giới hạn category, chỉ trả về các category được phép
+    let filteredCategories = categories;
+    if (req.categoryFilter && req.categoryFilter.length > 0) {
+      filteredCategories = categories.filter(cat => req.categoryFilter.includes(cat.slug));
+    }
+
     logger.info('Lấy danh mục theo thứ tự hiển thị thành công', {
-      resultCount: categories.length,
+      resultCount: filteredCategories.length,
       status,
       userId: req.user?.id,
       ip: req.ip
@@ -117,7 +140,7 @@ export const getOrderedCategories = async (req, res) => {
       status: 'success',
       message: 'Lấy danh mục theo thứ tự hiển thị thành công',
       data: {
-        categories: categories.map(category => category.getBasicInfo())
+        categories: filteredCategories.map(category => category.getBasicInfo())
       }
     });
 

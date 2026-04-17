@@ -65,7 +65,8 @@ export const authenticate = async (req, res, next) => {
       username: user.username,
       email: user.email,
       role: user.role,
-      status: user.status
+      status: user.status,
+      allowedCategories: user.allowedCategories || []
     };
 
     next();
@@ -156,9 +157,9 @@ export const optionalAuth = async (req, res, next) => {
         username: user.username,
         email: user.email,
         role: user.role,
-        status: user.status
+        status: user.status,
+        allowedCategories: user.allowedCategories || []
       };
-      
 
     }
 
@@ -209,4 +210,72 @@ export const ownerOrAdmin = (resourceUserIdField = 'userId') => {
 
     next();
   };
+};
+
+// Category restriction middleware
+// Admins with allowedCategories can only access categories in their allowed list
+// Super admins (empty allowedCategories) can access all categories
+export const restrictCategories = async (req, res, next) => {
+  try {
+    if (!req.user) {
+      return next();
+    }
+
+    // Only apply restriction to admin role with allowedCategories
+    if (req.user.role !== 'admin' || !req.user.allowedCategories || req.user.allowedCategories.length === 0) {
+      return next();
+    }
+
+    // Inject allowedCategories filter into request for controllers to use
+    req.categoryFilter = req.user.allowedCategories;
+
+    next();
+  } catch (error) {
+    logger.error('Lỗi khi kiểm tra giới hạn danh mục', {
+      error: error.message,
+      userId: req.user?.id,
+      ip: req.ip,
+      url: req.url
+    });
+    next(error);
+  }
+};
+
+// Category management restriction middleware
+// Restricted admins (with allowedCategories) cannot create/update/delete categories
+// They can only read and use existing categories within their allowed list
+export const restrictCategoryManagement = async (req, res, next) => {
+  try {
+    if (!req.user) {
+      return next();
+    }
+
+    // Only apply to admin role with allowedCategories
+    if (req.user.role !== 'admin' || !req.user.allowedCategories || req.user.allowedCategories.length === 0) {
+      return next();
+    }
+
+    logger.warn('Restricted admin cố gắng quản lý danh mục', {
+      userId: req.user.id,
+      username: req.user.username,
+      allowedCategories: req.user.allowedCategories,
+      method: req.method,
+      url: req.url,
+      ip: req.ip
+    });
+
+    return res.status(403).json({
+      status: 'error',
+      message: 'Bạn không có quyền tạo, cập nhật hoặc xóa danh mục. Vui lòng liên hệ super admin.',
+      data: null
+    });
+  } catch (error) {
+    logger.error('Lỗi khi kiểm tra quyền quản lý danh mục', {
+      error: error.message,
+      userId: req.user?.id,
+      ip: req.ip,
+      url: req.url
+    });
+    next(error);
+  }
 };

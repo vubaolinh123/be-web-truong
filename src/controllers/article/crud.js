@@ -34,6 +34,22 @@ export const getArticles = async (req, res) => {
       filter.status = status;
     }
 
+    // Nếu admin bị giới hạn category, chỉ lấy bài viết thuộc categories được phép
+    if (req.categoryFilter && req.categoryFilter.length > 0) {
+      const allowedCategoryDocs = await Category.find({ slug: { $in: req.categoryFilter } });
+      const allowedCategoryIds = allowedCategoryDocs.map(cat => cat._id);
+      if (allowedCategoryIds.length > 0) {
+        filter.categories = { $in: allowedCategoryIds };
+      } else {
+        // Không có category nào hợp lệ, trả về rỗng
+        return res.status(200).json({
+          status: 'success',
+          message: 'Không có bài viết nào thuộc danh mục được phép',
+          data: { articles: [], pagination: { ...paginationParams, totalArticles: 0, totalPages: 0 } }
+        });
+      }
+    }
+
     // Handle category by ID (preferred from UI)
     if (categoryId && categoryId !== 'all') {
       const ids = String(categoryId).split(',').map(s => s.trim()).filter(Boolean);
@@ -370,6 +386,26 @@ export const createArticle = async (req, res) => {
       });
     }
 
+    // Kiểm tra nếu admin bị giới hạn category, có được sử dụng các category này không
+    if (req.categoryFilter && req.categoryFilter.length > 0) {
+      const deniedCategories = existingCategories.filter(
+        cat => !req.categoryFilter.includes(cat.slug)
+      );
+      if (deniedCategories.length > 0) {
+        logger.warn('Admin bị giới hạn cố gắng tạo bài viết với category không được phép', {
+          deniedCategories: deniedCategories.map(c => c.slug),
+          allowedCategories: req.categoryFilter,
+          userId: req.user?.id,
+          ip: req.ip
+        });
+        return res.status(403).json({
+          status: 'error',
+          message: `Bạn không có quyền sử dụng danh mục: ${deniedCategories.map(c => c.name).join(', ')}`,
+          data: null
+        });
+      }
+    }
+
     // Tạo slug nếu không được cung cấp
     let finalSlug = slug;
     if (!finalSlug) {
@@ -589,6 +625,26 @@ export const updateArticle = async (req, res) => {
           message: 'Một hoặc nhiều danh mục không tồn tại hoặc không hoạt động',
           data: null
         });
+      }
+
+      // Kiểm tra nếu admin bị giới hạn category, có được sử dụng các category này không
+      if (req.categoryFilter && req.categoryFilter.length > 0) {
+        const deniedCategories = existingCategories.filter(
+          cat => !req.categoryFilter.includes(cat.slug)
+        );
+        if (deniedCategories.length > 0) {
+          logger.warn('Admin bị giới hạn cố gắng cập nhật bài viết với category không được phép', {
+            deniedCategories: deniedCategories.map(c => c.slug),
+            allowedCategories: req.categoryFilter,
+            userId: req.user?.id,
+            ip: req.ip
+          });
+          return res.status(403).json({
+            status: 'error',
+            message: `Bạn không có quyền sử dụng danh mục: ${deniedCategories.map(c => c.name).join(', ')}`,
+            data: null
+          });
+        }
       }
 
       // Cập nhật category counts nếu categories thay đổi

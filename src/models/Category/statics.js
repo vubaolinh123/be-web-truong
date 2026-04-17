@@ -152,7 +152,8 @@ const addStatics = (schema) => {
       status = null,
       limit = 10,
       sortBy = 'name',
-      sortOrder = 1
+      sortOrder = 1,
+      filter: extraFilter = {}
     } = options;
 
     const searchRegex = new RegExp(keyword, 'i');
@@ -167,6 +168,11 @@ const addStatics = (schema) => {
 
     if (status) {
       filter.status = status;
+    }
+
+    // Merge extra filter (e.g., slug restrictions for category-limited admins)
+    if (extraFilter && Object.keys(extraFilter).length > 0) {
+      Object.assign(filter, extraFilter);
     }
 
     return this.find(filter)

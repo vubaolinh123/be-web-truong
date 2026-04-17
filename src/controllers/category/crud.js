@@ -19,6 +19,11 @@ export const getCategories = async (req, res) => {
       filter.status = status;
     }
 
+    // Nếu admin bị giới hạn category, chỉ lấy các category được phép
+    if (req.categoryFilter && req.categoryFilter.length > 0) {
+      filter.slug = { $in: req.categoryFilter };
+    }
+
     // Nếu có search, sử dụng text search
     if (search) {
       filter.$text = { $search: search };
@@ -111,6 +116,24 @@ export const getCategory = async (req, res) => {
         message: 'Danh mục không tồn tại',
         data: null
       });
+    }
+
+    // Kiểm tra nếu admin bị giới hạn category, có được truy cập category này không
+    if (req.categoryFilter && req.categoryFilter.length > 0) {
+      if (!req.categoryFilter.includes(category.slug)) {
+        logger.warn('Admin bị giới hạn truy cập danh mục', {
+          categoryId: category._id,
+          categorySlug: category.slug,
+          allowedCategories: req.categoryFilter,
+          userId: req.user?.id,
+          ip: req.ip
+        });
+        return res.status(403).json({
+          status: 'error',
+          message: 'Bạn không có quyền truy cập danh mục này',
+          data: null
+        });
+      }
     }
 
     logger.info('Lấy thông tin danh mục thành công', {

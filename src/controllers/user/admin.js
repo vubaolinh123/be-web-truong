@@ -163,9 +163,24 @@ export const updateUser = async (req, res) => {
 
     // Update user
     Object.keys(updateData).forEach(key => {
-      if (key !== 'password') { // Password should be updated separately
-        user[key] = updateData[key];
+      // Password should be updated separately
+      // Only super admin (no category restrictions) can set allowedCategories
+      if (key === 'password') return;
+      
+      // Check if current admin is a restricted admin trying to set allowedCategories
+      if (key === 'allowedCategories') {
+        // Restricted admin cannot modify allowedCategories
+        if (req.user.allowedCategories && req.user.allowedCategories.length > 0) {
+          logger.warn('Restricted admin cố gắng thay đổi allowedCategories', {
+            adminId: req.user.id,
+            targetUserId: id,
+            ip: req.ip
+          });
+          return; // Skip this field
+        }
       }
+      
+      user[key] = updateData[key];
     });
 
     const updatedUser = await user.save();

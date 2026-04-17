@@ -16,7 +16,7 @@ import {
   unpublishArticle,
   getArticlesByCategorySlug
 } from '../../controllers/article/index.js';
-import { authenticate, authorize } from '../../middleware/auth.js';
+import { authenticate, authorize, restrictCategories } from '../../middleware/auth.js';
 
 const router = express.Router();
 
@@ -71,25 +71,25 @@ router.get('/public/:id/related', getRelatedArticles);
 router.get('/public/related/:categoryId', getRelatedArticlesByCategory);
 
 // Protected routes (cần authentication)
-// Lấy danh sách tất cả bài viết (admin/faculty/student)
-router.get('/', authenticate, getArticles);
+// Lấy danh sách tất cả bài viết (admin/faculty/student) - có giới hạn category cho restricted admin
+router.get('/', authenticate, restrictCategories, getArticles);
 
 // Admin/Faculty only routes
 // IMPORTANT: These must be defined BEFORE the generic '/:id' route
-router.get('/admin', authenticate, authorize('admin', 'faculty'), getArticles);
-router.get('/admin/statistics', authenticate, authorize('admin', 'faculty'), getArticleStatistics);
-router.get('/admin/search', authenticate, authorize('admin', 'faculty'), searchArticles);
-router.get('/admin/popular', authenticate, authorize('admin', 'faculty'), getPopularArticles);
-router.get('/admin/featured', authenticate, authorize('admin', 'faculty'), getFeaturedArticles);
+router.get('/admin', authenticate, authorize('admin', 'faculty'), restrictCategories, getArticles);
+router.get('/admin/statistics', authenticate, authorize('admin', 'faculty'), restrictCategories, getArticleStatistics);
+router.get('/admin/search', authenticate, authorize('admin', 'faculty'), restrictCategories, searchArticles);
+router.get('/admin/popular', authenticate, authorize('admin', 'faculty'), restrictCategories, getPopularArticles);
+router.get('/admin/featured', authenticate, authorize('admin', 'faculty'), restrictCategories, getFeaturedArticles);
 
 // Lấy thông tin chi tiết một bài viết (admin/faculty/student)
 router.get('/:id', authenticate, getArticle);
 
-// Tạo bài viết mới (admin/faculty/student)
-router.post('/', authenticate, authorize('admin', 'faculty', 'student'), createArticle);
+// Tạo bài viết mới (admin/faculty/student) - có giới hạn category cho restricted admin
+router.post('/', authenticate, authorize('admin', 'faculty', 'student'), restrictCategories, createArticle);
 
-// Cập nhật bài viết (admin/faculty hoặc author)
-router.put('/:id', authenticate, updateArticle);
+// Cập nhật bài viết (admin/faculty hoặc author) - có giới hạn category cho restricted admin
+router.put('/:id', authenticate, restrictCategories, updateArticle);
 
 // Xóa bài viết (admin hoặc author với điều kiện)
 router.delete('/:id', authenticate, deleteArticle);

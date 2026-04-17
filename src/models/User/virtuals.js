@@ -83,6 +83,11 @@ const addVirtuals = (schema) => {
     return this.role === 'faculty';
   });
 
+  // Is restricted admin (has limited category access)
+  schema.virtual('isRestrictedAdmin').get(function() {
+    return this.role === 'admin' && this.allowedCategories && this.allowedCategories.length > 0;
+  });
+
   // Is active virtual
   schema.virtual('isActive').get(function() {
     return this.status === 'active';

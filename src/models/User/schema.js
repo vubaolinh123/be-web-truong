@@ -120,6 +120,20 @@ const userSchema = new mongoose.Schema({
   passwordResetExpires: {
     type: Date,
     select: false
+  },
+  // Danh sách category được phép truy cập (dựa trên slug)
+  // Nếu mảng rỗng hoặc không set => super admin, được truy cập tất cả categories
+  // Nếu có slug cụ thể => chỉ được truy cập các categories tương ứng
+  allowedCategories: {
+    type: [String], // Mảng các slug của category
+    default: [],
+    validate: {
+      validator: function(slugs) {
+        // Kiểm tra mỗi slug hợp lệ
+        return slugs.every(slug => /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug));
+      },
+      message: 'allowedCategories chỉ chấp nhận các slug hợp lệ'
+    }
   }
 }, {
   timestamps: true,

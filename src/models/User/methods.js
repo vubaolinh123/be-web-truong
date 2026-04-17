@@ -21,7 +21,8 @@ const addMethods = (schema) => {
       username: this.username,
       email: this.email,
       role: this.role,
-      status: this.status
+      status: this.status,
+      allowedCategories: this.allowedCategories || []
     };
 
     return jwt.sign(
@@ -132,6 +133,16 @@ const addMethods = (schema) => {
     return userPermissions.includes(action);
   };
 
+  // Check if user can access a specific category
+  schema.methods.canAccessCategory = function(categorySlug) {
+    // Non-admin roles don't use category restrictions
+    if (this.role !== 'admin') return true;
+    // If allowedCategories is empty => super admin, access all
+    if (!this.allowedCategories || this.allowedCategories.length === 0) return true;
+    // Check if category slug is in the allowed list
+    return this.allowedCategories.includes(categorySlug);
+  };
+
   // Check if user can access a resource
   schema.methods.canAccess = function(resource, action = 'read') {
     // Admin can access everything
@@ -196,6 +207,7 @@ const addMethods = (schema) => {
       statusDisplay: this.statusDisplay,
       avatar: this.avatar,
       emailVerified: this.emailVerified,
+      allowedCategories: this.allowedCategories || [],
       lastLogin: this.lastLogin,
       createdAt: this.createdAt,
       updatedAt: this.updatedAt,
