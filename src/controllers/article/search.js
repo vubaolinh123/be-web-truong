@@ -27,6 +27,7 @@ export const getArticlesByCategorySlug = async (req, res) => {
       sort = 'newest', // 'newest' | 'oldest' | 'popular' (by viewCount)
       featured,
       search,
+      tag,
       status = 'published',
       authorRole = null,
       noCache = 'false'
@@ -55,7 +56,7 @@ export const getArticlesByCategorySlug = async (req, res) => {
     }
 
     // Cache check (by slug + sanitized query), allow bypass via noCache=true
-    const key = cacheKey(slug, { limit, page, sort, featured, search, status, authorRole });
+    const key = cacheKey(slug, { limit, page, sort, featured, search, tag, status, authorRole });
     if (String(noCache) !== 'true') {
       const cached = getCache(key);
       if (cached) {
@@ -83,6 +84,10 @@ export const getArticlesByCategorySlug = async (req, res) => {
     if (search) {
       // Text search on title/content (requires index)
       filter.$text = { $search: String(search) };
+    }
+
+    if (tag && tag !== 'all') {
+      filter.tags = tag;
     }
 
     // Sort
@@ -136,13 +141,20 @@ export const getArticlesByCategorySlug = async (req, res) => {
       });
     }
 
+    // Lấy danh sách tags có sẵn cho danh mục (bỏ qua tag filter hiện tại để hiển thị đầy đủ tags)
+    const tagFilter = { ...filter };
+    delete tagFilter.tags;
+    const availableTagsRaw = await Article.distinct('tags', tagFilter);
+    const availableTags = [...new Set(availableTagsRaw.map(t => typeof t === 'string' ? t.trim() : '').filter(Boolean))];
+
     const responseBody = {
       status: 'success',
       message: 'Lấy bài viết theo danh mục thành công',
       data: {
         articles: detailedArticles,
         pagination: result.pagination,
-        category: { id: category.id, name: category.name, slug: category.slug }
+        category: { id: category.id, name: category.name, slug: category.slug },
+        availableTags: availableTags.filter(Boolean)
       }
     };
 

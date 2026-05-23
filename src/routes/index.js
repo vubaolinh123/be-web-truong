@@ -7,7 +7,9 @@ import galleryRoutes from './gallery.js';
 import sliderRoutes from './slider.js';
 import albumRoutes from './album.js';
 import studentRoutes from './student/index.js';
+import sloganBannerRoutes from './sloganBanner.js';
 import { getCurrentVietnamTime, getVietnamTimezoneInfo } from '../utils/timezone.js';
+
 
 const router = express.Router();
 
@@ -96,6 +98,9 @@ router.use('/gallery', galleryRoutes);
 
 // Slider routes
 router.use('/sliders', sliderRoutes);
+
+// Slogan banner routes
+router.use('/slogan-banners', sloganBannerRoutes);
 
 // Album routes
 router.use('/albums', albumRoutes);

@@ -23,6 +23,7 @@ export const getArticles = async (req, res) => {
       authorId = null,              // UI uses this param
       featured = null,
       search = null,
+      tag = null,                   // support tag-based filtering
       sort = 'newest',              // legacy sort preset: newest|oldest|popular|views
       sortBy = null,               // UI uses sortBy field name
       sortOrder = 'desc'           // UI uses asc|desc
@@ -91,6 +92,11 @@ export const getArticles = async (req, res) => {
       filter.$text = { $search: String(search) };
     }
 
+    // Nếu lọc theo tag
+    if (tag && tag !== 'all') {
+      filter.tags = tag;
+    }
+
     // Determine sorting
     let paginationOptions = {
       page: paginationParams.page,
@@ -136,6 +142,12 @@ export const getArticles = async (req, res) => {
     // Lấy bài viết với phân trang
     const result = await Article.findWithPagination(filter, paginationOptions);
 
+    // Lấy danh sách tags có sẵn dựa trên bộ lọc (bỏ qua tag filter hiện tại để hiển thị đầy đủ tags)
+    const tagFilter = { ...filter };
+    delete tagFilter.tags;
+    const availableTagsRaw = await Article.distinct('tags', tagFilter);
+    const availableTags = [...new Set(availableTagsRaw.map(t => typeof t === 'string' ? t.trim() : '').filter(Boolean))];
+
     logger.info('Lấy danh sách bài viết thành công', {
       totalArticles: result.pagination.totalArticles,
       currentPage: result.pagination.currentPage,
@@ -149,7 +161,8 @@ export const getArticles = async (req, res) => {
       message: 'Lấy danh sách bài viết thành công',
       data: {
         articles: result.articles.map(article => article.getBasicInfo()),
-        pagination: result.pagination
+        pagination: result.pagination,
+        availableTags: availableTags.filter(Boolean)
       }
     });
 
